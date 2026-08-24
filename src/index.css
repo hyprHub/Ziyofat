@@ -1,0 +1,49 @@
+@import "tailwindcss";
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Cormorant+Garamond:wght@400;500;600;700&display=swap');
+
+@theme {
+  --color-cream: #FAF7F2;
+  --color-espresso: #3C2A21;
+  --color-latte: #E5C3A6;
+  --color-terracotta: #D05A3F;
+  --color-warm-white: #FFFDF9;
+  --color-soft-sand: #EFE7DE;
+  --color-taupe: #A89A8C;
+  --color-deep-brown: #291D18;
+  --color-sage: #7D8A6A;
+  --color-muted-gold: #C59B5B;
+  --color-success: #5E8063;
+  --color-danger: #B84C3A;
+
+  --font-sans: 'Inter', sans-serif;
+  --font-serif: 'Cormorant Garamond', serif;
+
+  --radius-button: 10px;
+  --radius-card: 16px;
+  --radius-dialog: 20px;
+}
+
+@layer base {
+  body {
+    background-color: var(--color-cream);
+    color: var(--color-espresso);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    margin: 0;
+  }
+
+  #root {
+    min-height: 100vh;
+  }
+
+  * {
+    transition: color 0.2s, background-color 0.2s, border-color 0.2s;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}

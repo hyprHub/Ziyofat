@@ -1,0 +1,970 @@
+import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import { usePlatform } from '../../contexts/PlatformContext';
+import { useRestaurant } from '../../contexts/RestaurantContext';
+import { formatCurrency } from '../../utils/helpers';
+import { Building2, Users, TrendingUp, DollarSign, Plus, Trash2, X, Bell, CreditCard, BarChart3, FileText, Settings as SettingsIcon, Save, RefreshCw } from 'lucide-react';
+import LanguageSwitcher from '../../components/common/LanguageSwitcher';
+import UserMenu from '../../components/common/UserMenu';
+import PageLoader from '../../components/common/PageLoader';
+import { analyticsService, pickNumber, pickValue, type RestaurantComparisonEntry } from '../../services/analyticsService';
+import { subscriptionService, type Subscription, type SubscriptionStats } from '../../services/subscriptionService';
+import { platformPaymentService, type PlatformPayment, type PlatformPaymentStats } from '../../services/platformPaymentService';
+import { systemLogsService, type SystemLog } from '../../services/systemLogsService';
+import { settingsService, type PlatformSettings } from '../../services/settingsService';
+import type { Restaurant, User, UserRole } from '../../types';
+
+type ModalMode = null | 'restaurant' | 'user';
+type SuperAdminTab =
+  | 'overview'
+  | 'restaurants'
+  | 'users'
+  | 'subscriptions'
+  | 'payments'
+  | 'analytics'
+  | 'systemLogs'
+  | 'settings';
+
+const emptyRestaurant = { name: '', slug: '', address: '', phone: '', email: '', active: true };
+const emptyUser = { name: '', email: '', password: '', role: 'admin' as UserRole, restaurantId: '' };
+
+export default function SuperAdminDashboard() {
+  const { t } = useTranslation();
+  const {
+    restaurants,
+    users,
+    isLoading,
+    createRestaurant,
+    removeRestaurant,
+    createUser,
+    removeUser,
+  } = usePlatform();
+  const { orders } = useRestaurant();
+
+  const [modal, setModal] = useState<ModalMode>(null);
+  const [restaurantForm, setRestaurantForm] = useState(emptyRestaurant);
+  const [userForm, setUserForm] = useState(emptyUser);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const [activeTab, setActiveTab] = useState<SuperAdminTab>('overview');
+  const [comparison, setComparison] = useState<RestaurantComparisonEntry[]>([]);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+
+  useEffect(() => {
+    if (activeTab !== 'analytics') return;
+    let cancelled = false;
+    setAnalyticsLoading(true);
+    analyticsService
+      .restaurantsComparison()
+      .then((data) => {
+        if (!cancelled) setComparison(data);
+      })
+      .finally(() => {
+        if (!cancelled) setAnalyticsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab]);
+
+  // Subscriptions
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+  const [subscriptionStats, setSubscriptionStats] = useState<SubscriptionStats | null>(null);
+  const [subscriptionsLoading, setSubscriptionsLoading] = useState(false);
+  const [subscriptionsError, setSubscriptionsError] = useState<string | null>(null);
+
+  const loadSubscriptions = () => {
+    setSubscriptionsLoading(true);
+    setSubscriptionsError(null);
+    Promise.all([subscriptionService.list(), subscriptionService.stats()])
+      .then(([list, stats]) => {
+        setSubscriptions(list);
+        setSubscriptionStats(stats);
+      })
+      .catch(() => setSubscriptionsError('Obunalarni yuklab bo\'lmadi.'))
+      .finally(() => setSubscriptionsLoading(false));
+  };
+
+  useEffect(() => {
+    if (activeTab !== 'subscriptions') return;
+    loadSubscriptions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
+
+  // Platform payments
+  const [payments, setPayments] = useState<PlatformPayment[]>([]);
+  const [paymentStats, setPaymentStats] = useState<PlatformPaymentStats | null>(null);
+  const [paymentsLoading, setPaymentsLoading] = useState(false);
+  const [paymentsError, setPaymentsError] = useState<string | null>(null);
+
+  const loadPayments = () => {
+    setPaymentsLoading(true);
+    setPaymentsError(null);
+    Promise.all([platformPaymentService.list(), platformPaymentService.stats()])
+      .then(([list, stats]) => {
+        setPayments(list);
+        setPaymentStats(stats);
+      })
+      .catch(() => setPaymentsError('To\'lovlarni yuklab bo\'lmadi.'))
+      .finally(() => setPaymentsLoading(false));
+  };
+
+  useEffect(() => {
+    if (activeTab !== 'payments') return;
+    loadPayments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
+
+  // System logs
+  const [logs, setLogs] = useState<SystemLog[]>([]);
+  const [logsLoading, setLogsLoading] = useState(false);
+  const [logsError, setLogsError] = useState<string | null>(null);
+
+  const loadLogs = () => {
+    setLogsLoading(true);
+    setLogsError(null);
+    systemLogsService
+      .list({ limit: 50 })
+      .then(setLogs)
+      .catch(() => setLogsError('Loglarni yuklab bo\'lmadi.'))
+      .finally(() => setLogsLoading(false));
+  };
+
+  useEffect(() => {
+    if (activeTab !== 'systemLogs') return;
+    loadLogs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
+
+  // Platform settings
+  const [settings, setSettings] = useState<PlatformSettings | null>(null);
+  const [settingsDraft, setSettingsDraft] = useState<string>('{}');
+  const [settingsLoading, setSettingsLoading] = useState(false);
+  const [settingsError, setSettingsError] = useState<string | null>(null);
+  const [settingsSaving, setSettingsSaving] = useState(false);
+  const [settingsSaved, setSettingsSaved] = useState(false);
+
+  const loadSettings = () => {
+    setSettingsLoading(true);
+    setSettingsError(null);
+    settingsService
+      .get()
+      .then((data) => {
+        setSettings(data);
+        setSettingsDraft(JSON.stringify(data ?? {}, null, 2));
+        if (data === null) setSettingsError('Sozlamalarni yuklab bo\'lmadi.');
+      })
+      .finally(() => setSettingsLoading(false));
+  };
+
+  useEffect(() => {
+    if (activeTab !== 'settings') return;
+    loadSettings();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
+
+  const handleSaveSettings = async () => {
+    let parsed: Record<string, unknown>;
+    try {
+      parsed = JSON.parse(settingsDraft);
+    } catch {
+      setSettingsError('JSON formati noto\'g\'ri.');
+      return;
+    }
+    setSettingsSaving(true);
+    setSettingsError(null);
+    setSettingsSaved(false);
+    const updated = await settingsService.update(parsed);
+    setSettingsSaving(false);
+    if (updated === undefined) {
+      setSettingsError('Sozlamalarni saqlab bo\'lmadi.');
+      return;
+    }
+    setSettings(updated);
+    setSettingsDraft(JSON.stringify(updated ?? {}, null, 2));
+    setSettingsSaved(true);
+    setTimeout(() => setSettingsSaved(false), 2500);
+  };
+
+  if (isLoading) return <PageLoader />;
+
+  const activeRestaurants = restaurants.filter((r) => r.active).length;
+  const totalUsers = users.length;
+  // Oylik daromad haqiqiy buyurtmalardan hisoblanadi (mock son emas)
+  const monthlyRevenue = orders
+    .filter((o) => o.status === 'completed' || o.status === 'served')
+    .reduce((sum, o) => sum + o.total, 0);
+
+  const closeModal = () => {
+    setModal(null);
+    setRestaurantForm(emptyRestaurant);
+    setUserForm(emptyUser);
+  };
+
+  const handleCreateRestaurant = async () => {
+    if (!restaurantForm.name.trim() || !restaurantForm.slug.trim()) return;
+    setIsSaving(true);
+    await createRestaurant(restaurantForm as Omit<Restaurant, 'id'>);
+    setIsSaving(false);
+    closeModal();
+  };
+
+  const handleCreateUser = async () => {
+    if (!userForm.name.trim() || !userForm.email.trim() || !userForm.password.trim()) return;
+    setIsSaving(true);
+    const payload: Omit<User, 'id'> = {
+      name: userForm.name,
+      email: userForm.email,
+      password: userForm.password,
+      role: userForm.role,
+      ...(userForm.restaurantId ? { restaurantId: userForm.restaurantId } : {}),
+    };
+    await createUser(payload);
+    setIsSaving(false);
+    closeModal();
+  };
+
+  const handleDeleteRestaurant = async (id: string) => {
+    if (window.confirm(t('superAdmin.confirmDeleteRestaurant'))) {
+      await removeRestaurant(id);
+    }
+  };
+
+  const handleDeleteUser = async (id: string) => {
+    if (window.confirm(t('superAdmin.confirmDeleteUser'))) {
+      await removeUser(id);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-soft-sand animate-in fade-in duration-300">
+      {/* Sidebar */}
+      <div className="fixed left-0 top-0 w-64 h-screen bg-white border-r border-latte shadow-sm">
+        <div className="p-6 border-b border-latte">
+          <h1 className="text-2xl font-bold text-espresso">Super Admin</h1>
+          <p className="text-sm text-taupe mt-1">System Management</p>
+        </div>
+
+        <nav className="p-4 space-y-2">
+          {(
+            [
+              { id: 'overview', label: t('navigation.overview'), icon: '📊' },
+              { id: 'restaurants', label: t('navigation.restaurants'), icon: '🏪' },
+              { id: 'users', label: t('navigation.users'), icon: '👥' },
+              { id: 'subscriptions', label: t('navigation.subscriptions'), icon: '🔔' },
+              { id: 'payments', label: t('navigation.payments'), icon: '💳' },
+              { id: 'analytics', label: t('navigation.analytics'), icon: '📈' },
+              { id: 'systemLogs', label: t('navigation.systemLogs'), icon: '📝' },
+              { id: 'settings', label: t('navigation.settings'), icon: '⚙️' },
+            ] as { id: SuperAdminTab; label: string; icon: string }[]
+          ).map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setActiveTab(item.id)}
+              className={`w-full text-left px-4 py-3 rounded-button transition-colors ${
+                activeTab === item.id ? 'bg-espresso text-white' : 'text-espresso hover:bg-soft-sand'
+              }`}
+            >
+              <span className="mr-3">{item.icon}</span>
+              {item.label}
+            </button>
+          ))}
+        </nav>
+      </div>
+
+      {/* Main Content */}
+      <div className="ml-64">
+        {/* Header */}
+        <header className="bg-white border-b border-latte shadow-sm sticky top-0 z-10">
+          <div className="px-8 py-4 flex items-center justify-between">
+            <div>
+              <h2 className="text-3xl font-bold text-espresso">System Overview</h2>
+              <p className="text-taupe text-sm">Manage all restaurants and users</p>
+            </div>
+            <div className="flex items-center gap-4">
+              <LanguageSwitcher />
+              <UserMenu />
+            </div>
+          </div>
+        </header>
+
+        {/* Content */}
+        <div className="p-8">
+        {activeTab === 'overview' && (
+        <>
+          {/* KPI Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div className="bg-white rounded-card p-6 shadow-sm border border-latte hover:border-espresso transition-all duration-300">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-taupe font-medium text-sm">{t('dashboard.totalRestaurants')}</h3>
+                <Building2 className="w-5 h-5 text-espresso" />
+              </div>
+              <div className="text-3xl font-bold text-espresso">{restaurants.length}</div>
+              <p className="text-xs text-sage mt-2">{activeRestaurants} active</p>
+            </div>
+
+            <div className="bg-white rounded-card p-6 shadow-sm border border-latte hover:border-espresso transition-all duration-300">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-taupe font-medium text-sm">{t('dashboard.activeRestaurants')}</h3>
+                <TrendingUp className="w-5 h-5 text-espresso" />
+              </div>
+              <div className="text-3xl font-bold text-espresso">{activeRestaurants}</div>
+              <p className="text-xs text-sage mt-2">of {restaurants.length} total</p>
+            </div>
+
+            <div className="bg-white rounded-card p-6 shadow-sm border border-latte hover:border-espresso transition-all duration-300">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-taupe font-medium text-sm">{t('dashboard.totalUsers')}</h3>
+                <Users className="w-5 h-5 text-espresso" />
+              </div>
+              <div className="text-3xl font-bold text-espresso">{totalUsers}</div>
+              <p className="text-xs text-sage mt-2">Active users</p>
+            </div>
+
+            <div className="bg-white rounded-card p-6 shadow-sm border border-latte hover:border-espresso transition-all duration-300">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-taupe font-medium text-sm">{t('dashboard.monthlyRevenue')}</h3>
+                <DollarSign className="w-5 h-5 text-espresso" />
+              </div>
+              <div className="text-3xl font-bold text-espresso">{formatCurrency(monthlyRevenue)}</div>
+              <p className="text-xs text-sage mt-2">from completed orders</p>
+            </div>
+          </div>
+
+        </>
+        )}
+
+        {(activeTab === 'overview' || activeTab === 'restaurants') && (
+          <div className={`bg-white rounded-card shadow-sm border border-latte overflow-hidden ${activeTab === 'overview' ? 'mb-8' : ''}`}>
+            <div className="p-6 border-b border-latte flex items-center justify-between">
+              <h3 className="text-xl font-bold text-espresso">{t('navigation.restaurants')}</h3>
+              <button
+                onClick={() => setModal('restaurant')}
+                className="flex items-center gap-2 px-4 py-2 rounded-button bg-espresso text-white text-sm font-semibold hover:bg-deep-brown transition-colors"
+              >
+                <Plus className="w-4 h-4" /> {t('superAdmin.addRestaurant')}
+              </button>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-soft-sand border-b border-latte">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-taupe">Name</th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-taupe">Location</th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-taupe">Status</th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-taupe">Contact</th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-taupe" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {restaurants.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-8 text-center text-taupe text-sm">
+                        {t('superAdmin.noRestaurants')}
+                      </td>
+                    </tr>
+                  )}
+                  {restaurants.map((restaurant) => (
+                    <tr
+                      key={restaurant.id}
+                      className="border-b border-soft-sand hover:bg-cream transition-colors"
+                    >
+                      <td className="px-6 py-4 font-semibold text-espresso">{restaurant.name}</td>
+                      <td className="px-6 py-4 text-taupe text-sm">{restaurant.address}</td>
+                      <td className="px-6 py-4">
+                        <span
+                          className={`px-3 py-1 rounded-button text-xs font-semibold ${
+                            restaurant.active
+                              ? 'bg-success/10 text-success'
+                              : 'bg-taupe/10 text-taupe'
+                          }`}
+                        >
+                          {restaurant.active ? t('superAdmin.active') : t('superAdmin.inactive')}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-taupe text-sm">{restaurant.phone}</td>
+                      <td className="px-6 py-4 text-right">
+                        <button
+                          onClick={() => handleDeleteRestaurant(restaurant.id)}
+                          className="p-2 rounded-button text-taupe hover:text-danger hover:bg-danger/10 transition-colors"
+                          aria-label={t('common.delete')}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {(activeTab === 'overview' || activeTab === 'users') && (
+          <div className="bg-white rounded-card shadow-sm border border-latte overflow-hidden">
+            <div className="p-6 border-b border-latte flex items-center justify-between">
+              <h3 className="text-xl font-bold text-espresso">{t('navigation.users')}</h3>
+              <button
+                onClick={() => setModal('user')}
+                className="flex items-center gap-2 px-4 py-2 rounded-button bg-espresso text-white text-sm font-semibold hover:bg-deep-brown transition-colors"
+              >
+                <Plus className="w-4 h-4" /> {t('superAdmin.addUser')}
+              </button>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-soft-sand border-b border-latte">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-taupe">Name</th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-taupe">Email</th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-taupe">Role</th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-taupe">Restaurant</th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-taupe" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {users.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-8 text-center text-taupe text-sm">
+                        {t('superAdmin.noUsers')}
+                      </td>
+                    </tr>
+                  )}
+                  {users.map((user) => (
+                    <tr key={user.id} className="border-b border-soft-sand hover:bg-cream transition-colors">
+                      <td className="px-6 py-4 font-semibold text-espresso">{user.name}</td>
+                      <td className="px-6 py-4 text-taupe text-sm">{user.email}</td>
+                      <td className="px-6 py-4">
+                        <span className="px-3 py-1 rounded-button text-xs font-semibold bg-latte/50 text-espresso">
+                          {user.role}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-taupe text-sm">
+                        {user.restaurantId
+                          ? restaurants.find((r) => r.id === user.restaurantId)?.name ?? '—'
+                          : t('superAdmin.system')}
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <button
+                          onClick={() => handleDeleteUser(user.id)}
+                          className="p-2 rounded-button text-taupe hover:text-danger hover:bg-danger/10 transition-colors"
+                          aria-label={t('common.delete')}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'analytics' && (
+          <div className="bg-white rounded-card shadow-sm border border-latte overflow-hidden">
+            <div className="p-6 border-b border-latte flex items-center gap-2">
+              <BarChart3 className="w-5 h-5 text-espresso" />
+              <h3 className="text-xl font-bold text-espresso">{t('navigation.analytics')}</h3>
+            </div>
+            {analyticsLoading ? (
+              <div className="p-8 text-center text-taupe text-sm">Yuklanmoqda...</div>
+            ) : comparison.length === 0 ? (
+              <div className="p-8 text-center text-taupe text-sm">
+                Backend hozircha restoranlar taqqoslash ma'lumotini qaytarmadi.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-soft-sand border-b border-latte">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-sm font-semibold text-taupe">Restoran</th>
+                      <th className="px-6 py-3 text-left text-sm font-semibold text-taupe">Daromad</th>
+                      <th className="px-6 py-3 text-left text-sm font-semibold text-taupe">Buyurtmalar</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {comparison.map((entry, idx) => (
+                      <tr key={idx} className="border-b border-soft-sand hover:bg-cream transition-colors">
+                        <td className="px-6 py-4 font-semibold text-espresso">
+                          {String(entry.name ?? entry.restaurantName ?? '—')}
+                        </td>
+                        <td className="px-6 py-4 text-taupe text-sm">
+                          {formatCurrency(pickNumber(entry, ['revenue', 'totalRevenue', 'income']))}
+                        </td>
+                        <td className="px-6 py-4 text-taupe text-sm">
+                          {pickNumber(entry, ['orders', 'totalOrders', 'ordersCount'])}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'subscriptions' && (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              <div className="bg-white rounded-card p-6 shadow-sm border border-latte">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-taupe font-medium text-sm">Faol obunalar</h3>
+                  <Bell className="w-5 h-5 text-espresso" />
+                </div>
+                <div className="text-3xl font-bold text-espresso">
+                  {pickNumber(subscriptionStats, ['activeCount', 'active'])}
+                </div>
+              </div>
+              <div className="bg-white rounded-card p-6 shadow-sm border border-latte">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-taupe font-medium text-sm">Sinov muddatida</h3>
+                  <Bell className="w-5 h-5 text-espresso" />
+                </div>
+                <div className="text-3xl font-bold text-espresso">
+                  {pickNumber(subscriptionStats, ['trialCount', 'trial'])}
+                </div>
+              </div>
+              <div className="bg-white rounded-card p-6 shadow-sm border border-latte">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-taupe font-medium text-sm">Tez orada tugaydi</h3>
+                  <Bell className="w-5 h-5 text-espresso" />
+                </div>
+                <div className="text-3xl font-bold text-espresso">
+                  {pickNumber(subscriptionStats, ['expiringSoon', 'expiringSoonCount'])}
+                </div>
+              </div>
+              <div className="bg-white rounded-card p-6 shadow-sm border border-latte">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-taupe font-medium text-sm">Jami obunalar</h3>
+                  <Bell className="w-5 h-5 text-espresso" />
+                </div>
+                <div className="text-3xl font-bold text-espresso">{subscriptions.length}</div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-card shadow-sm border border-latte overflow-hidden">
+              <div className="p-6 border-b border-latte flex items-center justify-between">
+                <h3 className="text-xl font-bold text-espresso">{t('navigation.subscriptions')}</h3>
+                <button
+                  onClick={loadSubscriptions}
+                  className="flex items-center gap-2 px-4 py-2 rounded-button border border-latte text-espresso text-sm font-semibold hover:bg-soft-sand transition-colors"
+                >
+                  <RefreshCw className="w-4 h-4" /> {t('common.loading') === 'Loading...' ? 'Refresh' : 'Yangilash'}
+                </button>
+              </div>
+              {subscriptionsLoading ? (
+                <div className="p-8 text-center text-taupe text-sm">Yuklanmoqda...</div>
+              ) : subscriptionsError ? (
+                <div className="p-8 text-center text-danger text-sm">{subscriptionsError}</div>
+              ) : subscriptions.length === 0 ? (
+                <div className="p-8 text-center text-taupe text-sm">Obunalar topilmadi.</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-soft-sand border-b border-latte">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-sm font-semibold text-taupe">Restoran</th>
+                        <th className="px-6 py-3 text-left text-sm font-semibold text-taupe">Tarif</th>
+                        <th className="px-6 py-3 text-left text-sm font-semibold text-taupe">Holat</th>
+                        <th className="px-6 py-3 text-left text-sm font-semibold text-taupe">Tugash sanasi</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {subscriptions.map((sub) => {
+                        const restaurantId = pickValue<string>(sub, ['restaurantId']);
+                        const restaurantName =
+                          restaurants.find((r) => r.id === restaurantId)?.name ??
+                          String(pickValue(sub, ['restaurantName']) ?? '—');
+                        const status = String(pickValue(sub, ['status']) ?? '—');
+                        const plan = String(pickValue(sub, ['plan']) ?? '—');
+                        const endDate = pickValue<string>(sub, ['endDate', 'expiresAt', 'currentPeriodEnd']);
+                        return (
+                          <tr key={sub.id} className="border-b border-soft-sand hover:bg-cream transition-colors">
+                            <td className="px-6 py-4 font-semibold text-espresso">{restaurantName}</td>
+                            <td className="px-6 py-4 text-taupe text-sm capitalize">{plan}</td>
+                            <td className="px-6 py-4">
+                              <span
+                                className={`px-3 py-1 rounded-button text-xs font-semibold capitalize ${
+                                  status === 'active'
+                                    ? 'bg-success/10 text-success'
+                                    : status === 'trial'
+                                      ? 'bg-terracotta/10 text-terracotta'
+                                      : status === 'expired' || status === 'cancelled'
+                                        ? 'bg-danger/10 text-danger'
+                                        : 'bg-taupe/10 text-taupe'
+                                }`}
+                              >
+                                {status}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-taupe text-sm">
+                              {endDate ? new Date(endDate).toLocaleDateString() : '—'}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
+        {activeTab === 'payments' && (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+              <div className="bg-white rounded-card p-6 shadow-sm border border-latte">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-taupe font-medium text-sm">Jami to'langan</h3>
+                  <CreditCard className="w-5 h-5 text-espresso" />
+                </div>
+                <div className="text-3xl font-bold text-espresso">
+                  {formatCurrency(pickNumber(paymentStats, ['totalPaid']))}
+                </div>
+              </div>
+              <div className="bg-white rounded-card p-6 shadow-sm border border-latte">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-taupe font-medium text-sm">Kutilmoqda</h3>
+                  <CreditCard className="w-5 h-5 text-espresso" />
+                </div>
+                <div className="text-3xl font-bold text-espresso">
+                  {pickNumber(paymentStats, ['pendingCount'])}
+                </div>
+              </div>
+              <div className="bg-white rounded-card p-6 shadow-sm border border-latte">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-taupe font-medium text-sm">Oylik daromad</h3>
+                  <CreditCard className="w-5 h-5 text-espresso" />
+                </div>
+                <div className="text-3xl font-bold text-espresso">
+                  {formatCurrency(pickNumber(paymentStats, ['monthlyRevenue']))}
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-card shadow-sm border border-latte overflow-hidden">
+              <div className="p-6 border-b border-latte flex items-center justify-between">
+                <h3 className="text-xl font-bold text-espresso">{t('navigation.payments')}</h3>
+                <button
+                  onClick={loadPayments}
+                  className="flex items-center gap-2 px-4 py-2 rounded-button border border-latte text-espresso text-sm font-semibold hover:bg-soft-sand transition-colors"
+                >
+                  <RefreshCw className="w-4 h-4" /> Yangilash
+                </button>
+              </div>
+              {paymentsLoading ? (
+                <div className="p-8 text-center text-taupe text-sm">Yuklanmoqda...</div>
+              ) : paymentsError ? (
+                <div className="p-8 text-center text-danger text-sm">{paymentsError}</div>
+              ) : payments.length === 0 ? (
+                <div className="p-8 text-center text-taupe text-sm">To'lovlar topilmadi.</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-soft-sand border-b border-latte">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-sm font-semibold text-taupe">Restoran</th>
+                        <th className="px-6 py-3 text-left text-sm font-semibold text-taupe">Summa</th>
+                        <th className="px-6 py-3 text-left text-sm font-semibold text-taupe">Holat</th>
+                        <th className="px-6 py-3 text-left text-sm font-semibold text-taupe">Sana</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {payments.map((p) => {
+                        const restaurantId = pickValue<string>(p, ['restaurantId']);
+                        const restaurantName =
+                          restaurants.find((r) => r.id === restaurantId)?.name ??
+                          String(pickValue(p, ['restaurantName']) ?? '—');
+                        const status = String(pickValue(p, ['status']) ?? '—');
+                        const amount = pickNumber(p, ['amount']);
+                        const createdAt = pickValue<string>(p, ['createdAt', 'date']);
+                        return (
+                          <tr key={p.id} className="border-b border-soft-sand hover:bg-cream transition-colors">
+                            <td className="px-6 py-4 font-semibold text-espresso">{restaurantName}</td>
+                            <td className="px-6 py-4 text-taupe text-sm">{formatCurrency(amount)}</td>
+                            <td className="px-6 py-4">
+                              <span
+                                className={`px-3 py-1 rounded-button text-xs font-semibold capitalize ${
+                                  status === 'paid'
+                                    ? 'bg-success/10 text-success'
+                                    : status === 'pending'
+                                      ? 'bg-terracotta/10 text-terracotta'
+                                      : status === 'failed' || status === 'refunded'
+                                        ? 'bg-danger/10 text-danger'
+                                        : 'bg-taupe/10 text-taupe'
+                                }`}
+                              >
+                                {status}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-taupe text-sm">
+                              {createdAt ? new Date(createdAt).toLocaleDateString() : '—'}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
+        {activeTab === 'systemLogs' && (
+          <div className="bg-white rounded-card shadow-sm border border-latte overflow-hidden">
+            <div className="p-6 border-b border-latte flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <FileText className="w-5 h-5 text-espresso" />
+                <h3 className="text-xl font-bold text-espresso">{t('navigation.systemLogs')}</h3>
+              </div>
+              <button
+                onClick={loadLogs}
+                className="flex items-center gap-2 px-4 py-2 rounded-button border border-latte text-espresso text-sm font-semibold hover:bg-soft-sand transition-colors"
+              >
+                <RefreshCw className="w-4 h-4" /> Yangilash
+              </button>
+            </div>
+            {logsLoading ? (
+              <div className="p-8 text-center text-taupe text-sm">Yuklanmoqda...</div>
+            ) : logsError ? (
+              <div className="p-8 text-center text-danger text-sm">{logsError}</div>
+            ) : logs.length === 0 ? (
+              <div className="p-8 text-center text-taupe text-sm">Loglar topilmadi.</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-soft-sand border-b border-latte">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-sm font-semibold text-taupe">Amal</th>
+                      <th className="px-6 py-3 text-left text-sm font-semibold text-taupe">Obyekt</th>
+                      <th className="px-6 py-3 text-left text-sm font-semibold text-taupe">Foydalanuvchi</th>
+                      <th className="px-6 py-3 text-left text-sm font-semibold text-taupe">Vaqt</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {logs.map((log) => {
+                      const action = String(pickValue(log, ['action']) ?? '—');
+                      const entity = String(pickValue(log, ['entity']) ?? '—');
+                      const userId = pickValue<string>(log, ['userId']);
+                      const userName =
+                        users.find((u) => u.id === userId)?.name ?? String(pickValue(log, ['userName']) ?? userId ?? '—');
+                      const createdAt = pickValue<string>(log, ['createdAt', 'timestamp']);
+                      return (
+                        <tr key={log.id} className="border-b border-soft-sand hover:bg-cream transition-colors">
+                          <td className="px-6 py-4 font-semibold text-espresso">{action}</td>
+                          <td className="px-6 py-4 text-taupe text-sm">{entity}</td>
+                          <td className="px-6 py-4 text-taupe text-sm">{userName}</td>
+                          <td className="px-6 py-4 text-taupe text-sm">
+                            {createdAt ? new Date(createdAt).toLocaleString() : '—'}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'settings' && (
+          <div className="bg-white rounded-card shadow-sm border border-latte overflow-hidden">
+            <div className="p-6 border-b border-latte flex items-center gap-2">
+              <SettingsIcon className="w-5 h-5 text-espresso" />
+              <h3 className="text-xl font-bold text-espresso">{t('navigation.settings')}</h3>
+            </div>
+            <div className="p-6">
+              {settingsLoading ? (
+                <div className="text-center text-taupe text-sm py-8">Yuklanmoqda...</div>
+              ) : (
+                <>
+                  <p className="text-sm text-taupe mb-3">
+                    Platforma darajasidagi sozlamalar (JSON ko'rinishida). Backend qaytargan maydonlar
+                    aniq hujjatlashtirilmagan bo'lsa ham, shu yerdan tahrirlab saqlashingiz mumkin.
+                  </p>
+                  <textarea
+                    value={settingsDraft}
+                    onChange={(e) => setSettingsDraft(e.target.value)}
+                    rows={16}
+                    className="w-full px-4 py-3 rounded-button border border-latte focus:border-espresso focus:outline-none font-mono text-sm"
+                    spellCheck={false}
+                  />
+                  {settingsError && (
+                    <div className="mt-3 text-sm text-danger bg-danger/10 rounded-button px-4 py-3">
+                      {settingsError}
+                    </div>
+                  )}
+                  {settingsSaved && (
+                    <div className="mt-3 text-sm text-success bg-success/10 rounded-button px-4 py-3">
+                      Sozlamalar saqlandi.
+                    </div>
+                  )}
+                  <div className="flex gap-3 mt-4">
+                    <button
+                      onClick={loadSettings}
+                      className="flex items-center gap-2 px-4 py-3 rounded-button border border-latte text-espresso font-semibold hover:bg-soft-sand transition-colors"
+                    >
+                      <RefreshCw className="w-4 h-4" /> Yangilash
+                    </button>
+                    <button
+                      onClick={handleSaveSettings}
+                      disabled={settingsSaving}
+                      className="flex items-center gap-2 px-4 py-3 rounded-button bg-espresso text-white font-semibold hover:bg-deep-brown transition-colors disabled:opacity-50"
+                    >
+                      <Save className="w-4 h-4" /> {settingsSaving ? t('common.loading') : t('common.save')}
+                    </button>
+                  </div>
+                  {settings === null && !settingsError && (
+                    <p className="text-xs text-taupe mt-3">Hozircha sozlama topilmadi — bo'sh obyekt ({'{}'}) saqlansa yangi sozlama yaratiladi.</p>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        )}
+        </div>
+      </div>
+
+      {/* Add Restaurant Modal */}
+      {modal === 'restaurant' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-espresso/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-dialog max-w-md w-full p-6 shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-espresso">{t('superAdmin.addRestaurant')}</h3>
+              <button onClick={closeModal} className="p-1 rounded-full hover:bg-soft-sand">
+                <X className="w-5 h-5 text-taupe" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <input
+                className="w-full px-4 py-3 rounded-button border border-latte focus:border-espresso focus:outline-none"
+                placeholder={t('superAdmin.restaurantName')}
+                value={restaurantForm.name}
+                onChange={(e) => setRestaurantForm({ ...restaurantForm, name: e.target.value })}
+              />
+              <input
+                className="w-full px-4 py-3 rounded-button border border-latte focus:border-espresso focus:outline-none"
+                placeholder={t('superAdmin.slug')}
+                value={restaurantForm.slug}
+                onChange={(e) => setRestaurantForm({ ...restaurantForm, slug: e.target.value })}
+              />
+              <input
+                className="w-full px-4 py-3 rounded-button border border-latte focus:border-espresso focus:outline-none"
+                placeholder={t('superAdmin.address')}
+                value={restaurantForm.address}
+                onChange={(e) => setRestaurantForm({ ...restaurantForm, address: e.target.value })}
+              />
+              <input
+                className="w-full px-4 py-3 rounded-button border border-latte focus:border-espresso focus:outline-none"
+                placeholder={t('superAdmin.phone')}
+                value={restaurantForm.phone}
+                onChange={(e) => setRestaurantForm({ ...restaurantForm, phone: e.target.value })}
+              />
+              <input
+                className="w-full px-4 py-3 rounded-button border border-latte focus:border-espresso focus:outline-none"
+                placeholder={t('superAdmin.email')}
+                value={restaurantForm.email}
+                onChange={(e) => setRestaurantForm({ ...restaurantForm, email: e.target.value })}
+              />
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={closeModal}
+                className="flex-1 px-4 py-3 rounded-button border border-latte text-espresso font-semibold hover:bg-soft-sand transition-colors"
+              >
+                {t('common.cancel')}
+              </button>
+              <button
+                onClick={handleCreateRestaurant}
+                disabled={isSaving}
+                className="flex-1 px-4 py-3 rounded-button bg-espresso text-white font-semibold hover:bg-deep-brown transition-colors disabled:opacity-50"
+              >
+                {isSaving ? t('common.loading') : t('common.save')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add User Modal */}
+      {modal === 'user' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-espresso/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-dialog max-w-md w-full p-6 shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-espresso">{t('superAdmin.addUser')}</h3>
+              <button onClick={closeModal} className="p-1 rounded-full hover:bg-soft-sand">
+                <X className="w-5 h-5 text-taupe" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <input
+                className="w-full px-4 py-3 rounded-button border border-latte focus:border-espresso focus:outline-none"
+                placeholder={t('superAdmin.userName')}
+                value={userForm.name}
+                onChange={(e) => setUserForm({ ...userForm, name: e.target.value })}
+              />
+              <input
+                className="w-full px-4 py-3 rounded-button border border-latte focus:border-espresso focus:outline-none"
+                placeholder={t('superAdmin.email')}
+                value={userForm.email}
+                onChange={(e) => setUserForm({ ...userForm, email: e.target.value })}
+              />
+              <input
+                type="password"
+                className="w-full px-4 py-3 rounded-button border border-latte focus:border-espresso focus:outline-none"
+                placeholder={t('superAdmin.password')}
+                value={userForm.password}
+                onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
+              />
+              <select
+                className="w-full px-4 py-3 rounded-button border border-latte focus:border-espresso focus:outline-none"
+                value={userForm.role}
+                onChange={(e) => setUserForm({ ...userForm, role: e.target.value as UserRole })}
+              >
+                {(['admin', 'kitchen', 'waiter', 'cashier', 'ceo', 'super-admin'] as UserRole[]).map(
+                  (role) => (
+                    <option key={role} value={role}>
+                      {role}
+                    </option>
+                  )
+                )}
+              </select>
+              {userForm.role !== 'super-admin' && (
+                <select
+                  className="w-full px-4 py-3 rounded-button border border-latte focus:border-espresso focus:outline-none"
+                  value={userForm.restaurantId}
+                  onChange={(e) => setUserForm({ ...userForm, restaurantId: e.target.value })}
+                >
+                  <option value="">{t('superAdmin.restaurant')}</option>
+                  {restaurants.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={closeModal}
+                className="flex-1 px-4 py-3 rounded-button border border-latte text-espresso font-semibold hover:bg-soft-sand transition-colors"
+              >
+                {t('common.cancel')}
+              </button>
+              <button
+                onClick={handleCreateUser}
+                disabled={isSaving}
+                className="flex-1 px-4 py-3 rounded-button bg-espresso text-white font-semibold hover:bg-deep-brown transition-colors disabled:opacity-50"
+              >
+                {isSaving ? t('common.loading') : t('common.save')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
