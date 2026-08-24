@@ -17,8 +17,14 @@ function mapProduct(raw: Record<string, unknown>): Product {
 }
 
 export const productService = {
+<<<<<<< HEAD
   async list(): Promise<Product[]> {
     const raw = await api.get<Record<string, unknown>[]>('/products');
+=======
+  async list(restaurantId?: string): Promise<Product[]> {
+    const query = restaurantId ? `?restaurantId=${encodeURIComponent(restaurantId)}` : '';
+    const raw = await api.get<Record<string, unknown>[]>(`/products${query}`);
+>>>>>>> 4ee2c584503d0bb61ecb47c880a3afd7956c32da
     return (raw ?? []).map(mapProduct);
   },
 

@@ -37,14 +37,21 @@ export const userService = {
     return mapUser(raw);
   },
 
+<<<<<<< HEAD
   // ⚠️ Swagger'da /users uchun PATCH/DELETE hujjatlashtirilmagan. Backend qo'llab-quvvatlamasa,
   // bu chaqiruvlar xatolik qaytaradi — chaqiruvchi joyda try/catch bilan ushlanadi.
+=======
+>>>>>>> 4ee2c584503d0bb61ecb47c880a3afd7956c32da
   async update(id: string, patch: Partial<User>): Promise<User | undefined> {
     try {
       const raw = await api.patch<Record<string, unknown>>(`/users/${id}`, patch);
       return mapUser(raw);
     } catch (err) {
+<<<<<<< HEAD
       console.error('Foydalanuvchini yangilab bo\'lmadi (backend PATCH /users/:id ni qo\'llamasligi mumkin):', err);
+=======
+      console.error('Foydalanuvchini yangilab bo\'lmadi:', err);
+>>>>>>> 4ee2c584503d0bb61ecb47c880a3afd7956c32da
       return undefined;
     }
   },
@@ -54,7 +61,11 @@ export const userService = {
       await api.delete(`/users/${id}`);
       return true;
     } catch (err) {
+<<<<<<< HEAD
       console.error('Foydalanuvchini o\'chirib bo\'lmadi (backend DELETE /users/:id ni qo\'llamasligi mumkin):', err);
+=======
+      console.error('Foydalanuvchini o\'chirib bo\'lmadi:', err);
+>>>>>>> 4ee2c584503d0bb61ecb47c880a3afd7956c32da
       return false;
     }
   },

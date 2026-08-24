@@ -104,6 +104,7 @@ export interface Transaction {
   createdAt: Date;
   createdBy: string; // user id (odatda kassir)
 }
+<<<<<<< HEAD
 
 // ==================== Platform: Subscriptions / Payments / System Logs / Settings ====================
 // Bu 4 tasi platforma (super-admin) darajasidagi — restoran to'lash uchun ishlatadigan obuna va billing.
@@ -164,3 +165,5 @@ export interface SystemLogsPage {
 export interface PlatformSettings {
   [key: string]: unknown;
 }
+=======
+>>>>>>> 4ee2c584503d0bb61ecb47c880a3afd7956c32da

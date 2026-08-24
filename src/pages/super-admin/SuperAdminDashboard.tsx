@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { usePlatform } from '../../contexts/PlatformContext';
 import { useRestaurant } from '../../contexts/RestaurantContext';
 import { formatCurrency } from '../../utils/helpers';
+<<<<<<< HEAD
 import { Building2, Users, TrendingUp, DollarSign, Plus, Trash2, X, Bell, CreditCard, BarChart3, FileText } from 'lucide-react';
 import LanguageSwitcher from '../../components/common/LanguageSwitcher';
 import UserMenu from '../../components/common/UserMenu';
@@ -23,6 +24,18 @@ import type {
   SystemLog,
   PlatformSettings,
 } from '../../types';
+=======
+import { Building2, Users, TrendingUp, DollarSign, Plus, Trash2, X, Bell, CreditCard, BarChart3, FileText, Settings as SettingsIcon, Save, RefreshCw } from 'lucide-react';
+import LanguageSwitcher from '../../components/common/LanguageSwitcher';
+import UserMenu from '../../components/common/UserMenu';
+import PageLoader from '../../components/common/PageLoader';
+import { analyticsService, pickNumber, pickValue, type RestaurantComparisonEntry } from '../../services/analyticsService';
+import { subscriptionService, type Subscription, type SubscriptionStats } from '../../services/subscriptionService';
+import { platformPaymentService, type PlatformPayment, type PlatformPaymentStats } from '../../services/platformPaymentService';
+import { systemLogsService, type SystemLog } from '../../services/systemLogsService';
+import { settingsService, type PlatformSettings } from '../../services/settingsService';
+import type { Restaurant, User, UserRole } from '../../types';
+>>>>>>> 4ee2c584503d0bb61ecb47c880a3afd7956c32da
 
 type ModalMode = null | 'restaurant' | 'user';
 type SuperAdminTab =
@@ -77,6 +90,7 @@ export default function SuperAdminDashboard() {
     };
   }, [activeTab]);
 
+<<<<<<< HEAD
   // ------- Subscriptions -------
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [subStats, setSubStats] = useState<SubscriptionStats | null>(null);
@@ -210,6 +224,125 @@ export default function SuperAdminDashboard() {
     pending: 'bg-muted-gold/10 text-muted-gold',
     failed: 'bg-danger/10 text-danger',
     refunded: 'bg-taupe/10 text-taupe',
+=======
+  // Subscriptions
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+  const [subscriptionStats, setSubscriptionStats] = useState<SubscriptionStats | null>(null);
+  const [subscriptionsLoading, setSubscriptionsLoading] = useState(false);
+  const [subscriptionsError, setSubscriptionsError] = useState<string | null>(null);
+
+  const loadSubscriptions = () => {
+    setSubscriptionsLoading(true);
+    setSubscriptionsError(null);
+    Promise.all([subscriptionService.list(), subscriptionService.stats()])
+      .then(([list, stats]) => {
+        setSubscriptions(list);
+        setSubscriptionStats(stats);
+      })
+      .catch(() => setSubscriptionsError('Obunalarni yuklab bo\'lmadi.'))
+      .finally(() => setSubscriptionsLoading(false));
+  };
+
+  useEffect(() => {
+    if (activeTab !== 'subscriptions') return;
+    loadSubscriptions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
+
+  // Platform payments
+  const [payments, setPayments] = useState<PlatformPayment[]>([]);
+  const [paymentStats, setPaymentStats] = useState<PlatformPaymentStats | null>(null);
+  const [paymentsLoading, setPaymentsLoading] = useState(false);
+  const [paymentsError, setPaymentsError] = useState<string | null>(null);
+
+  const loadPayments = () => {
+    setPaymentsLoading(true);
+    setPaymentsError(null);
+    Promise.all([platformPaymentService.list(), platformPaymentService.stats()])
+      .then(([list, stats]) => {
+        setPayments(list);
+        setPaymentStats(stats);
+      })
+      .catch(() => setPaymentsError('To\'lovlarni yuklab bo\'lmadi.'))
+      .finally(() => setPaymentsLoading(false));
+  };
+
+  useEffect(() => {
+    if (activeTab !== 'payments') return;
+    loadPayments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
+
+  // System logs
+  const [logs, setLogs] = useState<SystemLog[]>([]);
+  const [logsLoading, setLogsLoading] = useState(false);
+  const [logsError, setLogsError] = useState<string | null>(null);
+
+  const loadLogs = () => {
+    setLogsLoading(true);
+    setLogsError(null);
+    systemLogsService
+      .list({ limit: 50 })
+      .then(setLogs)
+      .catch(() => setLogsError('Loglarni yuklab bo\'lmadi.'))
+      .finally(() => setLogsLoading(false));
+  };
+
+  useEffect(() => {
+    if (activeTab !== 'systemLogs') return;
+    loadLogs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
+
+  // Platform settings
+  const [settings, setSettings] = useState<PlatformSettings | null>(null);
+  const [settingsDraft, setSettingsDraft] = useState<string>('{}');
+  const [settingsLoading, setSettingsLoading] = useState(false);
+  const [settingsError, setSettingsError] = useState<string | null>(null);
+  const [settingsSaving, setSettingsSaving] = useState(false);
+  const [settingsSaved, setSettingsSaved] = useState(false);
+
+  const loadSettings = () => {
+    setSettingsLoading(true);
+    setSettingsError(null);
+    settingsService
+      .get()
+      .then((data) => {
+        setSettings(data);
+        setSettingsDraft(JSON.stringify(data ?? {}, null, 2));
+        if (data === null) setSettingsError('Sozlamalarni yuklab bo\'lmadi.');
+      })
+      .finally(() => setSettingsLoading(false));
+  };
+
+  useEffect(() => {
+    if (activeTab !== 'settings') return;
+    loadSettings();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
+
+  const handleSaveSettings = async () => {
+    let parsed: Record<string, unknown>;
+    try {
+      parsed = JSON.parse(settingsDraft);
+    } catch {
+      setSettingsError('JSON formati noto\'g\'ri.');
+      return;
+    }
+    setSettingsSaving(true);
+    setSettingsError(null);
+    setSettingsSaved(false);
+    const updated = await settingsService.update(parsed);
+    setSettingsSaving(false);
+    if (updated === undefined) {
+      setSettingsError('Sozlamalarni saqlab bo\'lmadi.');
+      return;
+    }
+    setSettings(updated);
+    setSettingsDraft(JSON.stringify(updated ?? {}, null, 2));
+    setSettingsSaved(true);
+    setTimeout(() => setSettingsSaved(false), 2500);
+>>>>>>> 4ee2c584503d0bb61ecb47c880a3afd7956c32da
   };
 
   if (isLoading) return <PageLoader />;
@@ -531,6 +664,7 @@ export default function SuperAdminDashboard() {
         )}
 
         {activeTab === 'subscriptions' && (
+<<<<<<< HEAD
           <div className="space-y-6">
             {subStats && (
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -567,11 +701,68 @@ export default function SuperAdminDashboard() {
               </div>
               {subsLoading ? (
                 <div className="p-8 text-center text-taupe text-sm">{t('common.loading')}</div>
+=======
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              <div className="bg-white rounded-card p-6 shadow-sm border border-latte">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-taupe font-medium text-sm">Faol obunalar</h3>
+                  <Bell className="w-5 h-5 text-espresso" />
+                </div>
+                <div className="text-3xl font-bold text-espresso">
+                  {pickNumber(subscriptionStats, ['activeCount', 'active'])}
+                </div>
+              </div>
+              <div className="bg-white rounded-card p-6 shadow-sm border border-latte">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-taupe font-medium text-sm">Sinov muddatida</h3>
+                  <Bell className="w-5 h-5 text-espresso" />
+                </div>
+                <div className="text-3xl font-bold text-espresso">
+                  {pickNumber(subscriptionStats, ['trialCount', 'trial'])}
+                </div>
+              </div>
+              <div className="bg-white rounded-card p-6 shadow-sm border border-latte">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-taupe font-medium text-sm">Tez orada tugaydi</h3>
+                  <Bell className="w-5 h-5 text-espresso" />
+                </div>
+                <div className="text-3xl font-bold text-espresso">
+                  {pickNumber(subscriptionStats, ['expiringSoon', 'expiringSoonCount'])}
+                </div>
+              </div>
+              <div className="bg-white rounded-card p-6 shadow-sm border border-latte">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-taupe font-medium text-sm">Jami obunalar</h3>
+                  <Bell className="w-5 h-5 text-espresso" />
+                </div>
+                <div className="text-3xl font-bold text-espresso">{subscriptions.length}</div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-card shadow-sm border border-latte overflow-hidden">
+              <div className="p-6 border-b border-latte flex items-center justify-between">
+                <h3 className="text-xl font-bold text-espresso">{t('navigation.subscriptions')}</h3>
+                <button
+                  onClick={loadSubscriptions}
+                  className="flex items-center gap-2 px-4 py-2 rounded-button border border-latte text-espresso text-sm font-semibold hover:bg-soft-sand transition-colors"
+                >
+                  <RefreshCw className="w-4 h-4" /> {t('common.loading') === 'Loading...' ? 'Refresh' : 'Yangilash'}
+                </button>
+              </div>
+              {subscriptionsLoading ? (
+                <div className="p-8 text-center text-taupe text-sm">Yuklanmoqda...</div>
+              ) : subscriptionsError ? (
+                <div className="p-8 text-center text-danger text-sm">{subscriptionsError}</div>
+              ) : subscriptions.length === 0 ? (
+                <div className="p-8 text-center text-taupe text-sm">Obunalar topilmadi.</div>
+>>>>>>> 4ee2c584503d0bb61ecb47c880a3afd7956c32da
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead className="bg-soft-sand border-b border-latte">
                       <tr>
+<<<<<<< HEAD
                         <th className="px-6 py-3 text-left text-sm font-semibold text-taupe">{t('superAdmin.restaurant')}</th>
                         <th className="px-6 py-3 text-left text-sm font-semibold text-taupe">{t('superAdmin.plan')}</th>
                         <th className="px-6 py-3 text-left text-sm font-semibold text-taupe">{t('superAdmin.price')}</th>
@@ -602,11 +793,54 @@ export default function SuperAdminDashboard() {
                           </td>
                         </tr>
                       ))}
+=======
+                        <th className="px-6 py-3 text-left text-sm font-semibold text-taupe">Restoran</th>
+                        <th className="px-6 py-3 text-left text-sm font-semibold text-taupe">Tarif</th>
+                        <th className="px-6 py-3 text-left text-sm font-semibold text-taupe">Holat</th>
+                        <th className="px-6 py-3 text-left text-sm font-semibold text-taupe">Tugash sanasi</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {subscriptions.map((sub) => {
+                        const restaurantId = pickValue<string>(sub, ['restaurantId']);
+                        const restaurantName =
+                          restaurants.find((r) => r.id === restaurantId)?.name ??
+                          String(pickValue(sub, ['restaurantName']) ?? '—');
+                        const status = String(pickValue(sub, ['status']) ?? '—');
+                        const plan = String(pickValue(sub, ['plan']) ?? '—');
+                        const endDate = pickValue<string>(sub, ['endDate', 'expiresAt', 'currentPeriodEnd']);
+                        return (
+                          <tr key={sub.id} className="border-b border-soft-sand hover:bg-cream transition-colors">
+                            <td className="px-6 py-4 font-semibold text-espresso">{restaurantName}</td>
+                            <td className="px-6 py-4 text-taupe text-sm capitalize">{plan}</td>
+                            <td className="px-6 py-4">
+                              <span
+                                className={`px-3 py-1 rounded-button text-xs font-semibold capitalize ${
+                                  status === 'active'
+                                    ? 'bg-success/10 text-success'
+                                    : status === 'trial'
+                                      ? 'bg-terracotta/10 text-terracotta'
+                                      : status === 'expired' || status === 'cancelled'
+                                        ? 'bg-danger/10 text-danger'
+                                        : 'bg-taupe/10 text-taupe'
+                                }`}
+                              >
+                                {status}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-taupe text-sm">
+                              {endDate ? new Date(endDate).toLocaleDateString() : '—'}
+                            </td>
+                          </tr>
+                        );
+                      })}
+>>>>>>> 4ee2c584503d0bb61ecb47c880a3afd7956c32da
                     </tbody>
                   </table>
                 </div>
               )}
             </div>
+<<<<<<< HEAD
           </div>
         )}
 
@@ -636,11 +870,65 @@ export default function SuperAdminDashboard() {
               </div>
               {paymentsLoading ? (
                 <div className="p-8 text-center text-taupe text-sm">{t('common.loading')}</div>
+=======
+          </>
+        )}
+
+        {activeTab === 'payments' && (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+              <div className="bg-white rounded-card p-6 shadow-sm border border-latte">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-taupe font-medium text-sm">Jami to'langan</h3>
+                  <CreditCard className="w-5 h-5 text-espresso" />
+                </div>
+                <div className="text-3xl font-bold text-espresso">
+                  {formatCurrency(pickNumber(paymentStats, ['totalPaid']))}
+                </div>
+              </div>
+              <div className="bg-white rounded-card p-6 shadow-sm border border-latte">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-taupe font-medium text-sm">Kutilmoqda</h3>
+                  <CreditCard className="w-5 h-5 text-espresso" />
+                </div>
+                <div className="text-3xl font-bold text-espresso">
+                  {pickNumber(paymentStats, ['pendingCount'])}
+                </div>
+              </div>
+              <div className="bg-white rounded-card p-6 shadow-sm border border-latte">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-taupe font-medium text-sm">Oylik daromad</h3>
+                  <CreditCard className="w-5 h-5 text-espresso" />
+                </div>
+                <div className="text-3xl font-bold text-espresso">
+                  {formatCurrency(pickNumber(paymentStats, ['monthlyRevenue']))}
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-card shadow-sm border border-latte overflow-hidden">
+              <div className="p-6 border-b border-latte flex items-center justify-between">
+                <h3 className="text-xl font-bold text-espresso">{t('navigation.payments')}</h3>
+                <button
+                  onClick={loadPayments}
+                  className="flex items-center gap-2 px-4 py-2 rounded-button border border-latte text-espresso text-sm font-semibold hover:bg-soft-sand transition-colors"
+                >
+                  <RefreshCw className="w-4 h-4" /> Yangilash
+                </button>
+              </div>
+              {paymentsLoading ? (
+                <div className="p-8 text-center text-taupe text-sm">Yuklanmoqda...</div>
+              ) : paymentsError ? (
+                <div className="p-8 text-center text-danger text-sm">{paymentsError}</div>
+              ) : payments.length === 0 ? (
+                <div className="p-8 text-center text-taupe text-sm">To'lovlar topilmadi.</div>
+>>>>>>> 4ee2c584503d0bb61ecb47c880a3afd7956c32da
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead className="bg-soft-sand border-b border-latte">
                       <tr>
+<<<<<<< HEAD
                         <th className="px-6 py-3 text-left text-sm font-semibold text-taupe">{t('superAdmin.restaurant')}</th>
                         <th className="px-6 py-3 text-left text-sm font-semibold text-taupe">{t('superAdmin.amount')}</th>
                         <th className="px-6 py-3 text-left text-sm font-semibold text-taupe">{t('superAdmin.date')}</th>
@@ -667,27 +955,95 @@ export default function SuperAdminDashboard() {
                           </td>
                         </tr>
                       ))}
+=======
+                        <th className="px-6 py-3 text-left text-sm font-semibold text-taupe">Restoran</th>
+                        <th className="px-6 py-3 text-left text-sm font-semibold text-taupe">Summa</th>
+                        <th className="px-6 py-3 text-left text-sm font-semibold text-taupe">Holat</th>
+                        <th className="px-6 py-3 text-left text-sm font-semibold text-taupe">Sana</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {payments.map((p) => {
+                        const restaurantId = pickValue<string>(p, ['restaurantId']);
+                        const restaurantName =
+                          restaurants.find((r) => r.id === restaurantId)?.name ??
+                          String(pickValue(p, ['restaurantName']) ?? '—');
+                        const status = String(pickValue(p, ['status']) ?? '—');
+                        const amount = pickNumber(p, ['amount']);
+                        const createdAt = pickValue<string>(p, ['createdAt', 'date']);
+                        return (
+                          <tr key={p.id} className="border-b border-soft-sand hover:bg-cream transition-colors">
+                            <td className="px-6 py-4 font-semibold text-espresso">{restaurantName}</td>
+                            <td className="px-6 py-4 text-taupe text-sm">{formatCurrency(amount)}</td>
+                            <td className="px-6 py-4">
+                              <span
+                                className={`px-3 py-1 rounded-button text-xs font-semibold capitalize ${
+                                  status === 'paid'
+                                    ? 'bg-success/10 text-success'
+                                    : status === 'pending'
+                                      ? 'bg-terracotta/10 text-terracotta'
+                                      : status === 'failed' || status === 'refunded'
+                                        ? 'bg-danger/10 text-danger'
+                                        : 'bg-taupe/10 text-taupe'
+                                }`}
+                              >
+                                {status}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-taupe text-sm">
+                              {createdAt ? new Date(createdAt).toLocaleDateString() : '—'}
+                            </td>
+                          </tr>
+                        );
+                      })}
+>>>>>>> 4ee2c584503d0bb61ecb47c880a3afd7956c32da
                     </tbody>
                   </table>
                 </div>
               )}
             </div>
+<<<<<<< HEAD
           </div>
+=======
+          </>
+>>>>>>> 4ee2c584503d0bb61ecb47c880a3afd7956c32da
         )}
 
         {activeTab === 'systemLogs' && (
           <div className="bg-white rounded-card shadow-sm border border-latte overflow-hidden">
+<<<<<<< HEAD
             <div className="p-6 border-b border-latte flex items-center gap-2">
               <FileText className="w-5 h-5 text-espresso" />
               <h3 className="text-xl font-bold text-espresso">{t('navigation.systemLogs')}</h3>
             </div>
             {logsLoading ? (
               <div className="p-8 text-center text-taupe text-sm">{t('common.loading')}</div>
+=======
+            <div className="p-6 border-b border-latte flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <FileText className="w-5 h-5 text-espresso" />
+                <h3 className="text-xl font-bold text-espresso">{t('navigation.systemLogs')}</h3>
+              </div>
+              <button
+                onClick={loadLogs}
+                className="flex items-center gap-2 px-4 py-2 rounded-button border border-latte text-espresso text-sm font-semibold hover:bg-soft-sand transition-colors"
+              >
+                <RefreshCw className="w-4 h-4" /> Yangilash
+              </button>
+            </div>
+            {logsLoading ? (
+              <div className="p-8 text-center text-taupe text-sm">Yuklanmoqda...</div>
+            ) : logsError ? (
+              <div className="p-8 text-center text-danger text-sm">{logsError}</div>
+            ) : logs.length === 0 ? (
+              <div className="p-8 text-center text-taupe text-sm">Loglar topilmadi.</div>
+>>>>>>> 4ee2c584503d0bb61ecb47c880a3afd7956c32da
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead className="bg-soft-sand border-b border-latte">
                     <tr>
+<<<<<<< HEAD
                       <th className="px-6 py-3 text-left text-sm font-semibold text-taupe">{t('superAdmin.actor')}</th>
                       <th className="px-6 py-3 text-left text-sm font-semibold text-taupe">{t('superAdmin.action')}</th>
                       <th className="px-6 py-3 text-left text-sm font-semibold text-taupe">{t('superAdmin.entity')}</th>
@@ -712,6 +1068,33 @@ export default function SuperAdminDashboard() {
                         <td className="px-6 py-4 text-taupe text-sm">{dateTimeFmt(log.createdAt)}</td>
                       </tr>
                     ))}
+=======
+                      <th className="px-6 py-3 text-left text-sm font-semibold text-taupe">Amal</th>
+                      <th className="px-6 py-3 text-left text-sm font-semibold text-taupe">Obyekt</th>
+                      <th className="px-6 py-3 text-left text-sm font-semibold text-taupe">Foydalanuvchi</th>
+                      <th className="px-6 py-3 text-left text-sm font-semibold text-taupe">Vaqt</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {logs.map((log) => {
+                      const action = String(pickValue(log, ['action']) ?? '—');
+                      const entity = String(pickValue(log, ['entity']) ?? '—');
+                      const userId = pickValue<string>(log, ['userId']);
+                      const userName =
+                        users.find((u) => u.id === userId)?.name ?? String(pickValue(log, ['userName']) ?? userId ?? '—');
+                      const createdAt = pickValue<string>(log, ['createdAt', 'timestamp']);
+                      return (
+                        <tr key={log.id} className="border-b border-soft-sand hover:bg-cream transition-colors">
+                          <td className="px-6 py-4 font-semibold text-espresso">{action}</td>
+                          <td className="px-6 py-4 text-taupe text-sm">{entity}</td>
+                          <td className="px-6 py-4 text-taupe text-sm">{userName}</td>
+                          <td className="px-6 py-4 text-taupe text-sm">
+                            {createdAt ? new Date(createdAt).toLocaleString() : '—'}
+                          </td>
+                        </tr>
+                      );
+                    })}
+>>>>>>> 4ee2c584503d0bb61ecb47c880a3afd7956c32da
                   </tbody>
                 </table>
               </div>
@@ -720,6 +1103,7 @@ export default function SuperAdminDashboard() {
         )}
 
         {activeTab === 'settings' && (
+<<<<<<< HEAD
           <div className="bg-white rounded-card p-8 shadow-sm border border-latte max-w-2xl">
             {settingsLoading ? (
               <div className="text-center text-taupe text-sm py-8">{t('common.loading')}</div>
@@ -774,6 +1158,60 @@ export default function SuperAdminDashboard() {
                 </div>
               </div>
             )}
+=======
+          <div className="bg-white rounded-card shadow-sm border border-latte overflow-hidden">
+            <div className="p-6 border-b border-latte flex items-center gap-2">
+              <SettingsIcon className="w-5 h-5 text-espresso" />
+              <h3 className="text-xl font-bold text-espresso">{t('navigation.settings')}</h3>
+            </div>
+            <div className="p-6">
+              {settingsLoading ? (
+                <div className="text-center text-taupe text-sm py-8">Yuklanmoqda...</div>
+              ) : (
+                <>
+                  <p className="text-sm text-taupe mb-3">
+                    Platforma darajasidagi sozlamalar (JSON ko'rinishida). Backend qaytargan maydonlar
+                    aniq hujjatlashtirilmagan bo'lsa ham, shu yerdan tahrirlab saqlashingiz mumkin.
+                  </p>
+                  <textarea
+                    value={settingsDraft}
+                    onChange={(e) => setSettingsDraft(e.target.value)}
+                    rows={16}
+                    className="w-full px-4 py-3 rounded-button border border-latte focus:border-espresso focus:outline-none font-mono text-sm"
+                    spellCheck={false}
+                  />
+                  {settingsError && (
+                    <div className="mt-3 text-sm text-danger bg-danger/10 rounded-button px-4 py-3">
+                      {settingsError}
+                    </div>
+                  )}
+                  {settingsSaved && (
+                    <div className="mt-3 text-sm text-success bg-success/10 rounded-button px-4 py-3">
+                      Sozlamalar saqlandi.
+                    </div>
+                  )}
+                  <div className="flex gap-3 mt-4">
+                    <button
+                      onClick={loadSettings}
+                      className="flex items-center gap-2 px-4 py-3 rounded-button border border-latte text-espresso font-semibold hover:bg-soft-sand transition-colors"
+                    >
+                      <RefreshCw className="w-4 h-4" /> Yangilash
+                    </button>
+                    <button
+                      onClick={handleSaveSettings}
+                      disabled={settingsSaving}
+                      className="flex items-center gap-2 px-4 py-3 rounded-button bg-espresso text-white font-semibold hover:bg-deep-brown transition-colors disabled:opacity-50"
+                    >
+                      <Save className="w-4 h-4" /> {settingsSaving ? t('common.loading') : t('common.save')}
+                    </button>
+                  </div>
+                  {settings === null && !settingsError && (
+                    <p className="text-xs text-taupe mt-3">Hozircha sozlama topilmadi — bo'sh obyekt ({'{}'}) saqlansa yangi sozlama yaratiladi.</p>
+                  )}
+                </>
+              )}
+            </div>
+>>>>>>> 4ee2c584503d0bb61ecb47c880a3afd7956c32da
           </div>
         )}
         </div>

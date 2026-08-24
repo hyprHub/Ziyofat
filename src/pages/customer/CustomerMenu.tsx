@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
@@ -38,13 +39,61 @@ const combos = [
     badge: { uz: '11:00-15:00', ru: '11:00-15:00', en: '11:00-15:00' }
   }
 ];
+=======
+import { useState, useMemo, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useParams } from 'react-router-dom';
+import { ShoppingCart, Plus, Phone, Receipt, Droplets, X, Minus, Clock, Check, AlertCircle } from 'lucide-react';
+import { publicService } from '../../services/publicService';
+import { formatCurrency } from '../../utils/helpers';
+import LanguageSwitcher from '../../components/common/LanguageSwitcher';
+import PageLoader from '../../components/common/PageLoader';
+import type { Category, Product } from '../../types';
+>>>>>>> 4ee2c584503d0bb61ecb47c880a3afd7956c32da
 
 export default function CustomerMenu() {
   const { t, i18n } = useTranslation();
   const { restaurantSlug, tableToken } = useParams<{ restaurantSlug: string; tableToken: string }>();
+<<<<<<< HEAD
   const { products, categories, tables, createServiceRequest, createOrder, isLoading } =
     useRestaurant();
   const { restaurants, isLoading: platformLoading } = usePlatform();
+=======
+
+  // Mijoz HECH QACHON login qilmaydi — shu sabab bu yerda RestaurantContext ishlatilmaydi,
+  // faqat backend'ning tokensiz "public" endpointlari orqali ma'lumot olinadi.
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!restaurantSlug) {
+      setLoadError('Restoran manzili noto\'g\'ri (slug topilmadi).');
+      setIsLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setIsLoading(true);
+    setLoadError(null);
+    publicService
+      .getMenu(restaurantSlug)
+      .then(({ categories: cats, products: prods }) => {
+        if (cancelled) return;
+        setCategories(cats);
+        setProducts(prods);
+      })
+      .catch(() => {
+        if (!cancelled) setLoadError('Menyuni yuklab bo\'lmadi. Iltimos, QR kodni qaytadan skanerlang.');
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [restaurantSlug]);
+>>>>>>> 4ee2c584503d0bb61ecb47c880a3afd7956c32da
 
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [cart, setCart] = useState<{ productId: string; quantity: number }[]>([]);
@@ -53,10 +102,14 @@ export default function CustomerMenu() {
   const [notification, setNotification] = useState<string | null>(null);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [orderPlaced, setOrderPlaced] = useState(false);
+<<<<<<< HEAD
 
   // QR havoladan kelgan restoran va stol — mavjud bo'lmasa demo uchun birinchi stolga tushamiz
   const restaurant = restaurants.find((r) => r.slug === restaurantSlug) ?? restaurants[0];
   const activeTable = tables.find((tbl) => tbl.id === tableToken) ?? tables[0];
+=======
+  const [orderError, setOrderError] = useState<string | null>(null);
+>>>>>>> 4ee2c584503d0bb61ecb47c880a3afd7956c32da
 
   const filteredProducts = useMemo(() => {
     if (selectedCategory === 'all') return products;
@@ -98,9 +151,19 @@ export default function CustomerMenu() {
   };
 
   const handleServiceRequest = async (type: 'waiter' | 'bill' | 'water') => {
+<<<<<<< HEAD
     if (!activeTable) return;
     await createServiceRequest(activeTable.id, type);
     showNotification(t('customer.waiterNotified'));
+=======
+    if (!restaurantSlug || !tableToken) return;
+    try {
+      await publicService.createServiceRequest(restaurantSlug, tableToken, type);
+      showNotification(t('customer.waiterNotified'));
+    } catch {
+      showNotification('So\'rovni yuborib bo\'lmadi. Qaytadan urinib ko\'ring.');
+    }
+>>>>>>> 4ee2c584503d0bb61ecb47c880a3afd7956c32da
   };
 
   const showNotification = (message: string) => {
@@ -109,6 +172,7 @@ export default function CustomerMenu() {
   };
 
   const handlePlaceOrder = async () => {
+<<<<<<< HEAD
     if (!activeTable || cart.length === 0) return;
     setIsPlacingOrder(true);
 
@@ -127,11 +191,49 @@ export default function CustomerMenu() {
       setShowCart(false);
       setOrderPlaced(false);
     }, 2000);
+=======
+    if (!restaurantSlug || !tableToken || cart.length === 0) return;
+    setIsPlacingOrder(true);
+    setOrderError(null);
+    try {
+      await publicService.placeOrder(
+        restaurantSlug,
+        tableToken,
+        cart.map((item) => ({ productId: item.productId, quantity: item.quantity }))
+      );
+      setOrderPlaced(true);
+      setCart([]);
+      setTimeout(() => {
+        setShowCart(false);
+        setOrderPlaced(false);
+      }, 2500);
+    } catch {
+      setOrderError('Buyurtmani yuborib bo\'lmadi. Iltimos, qaytadan urinib ko\'ring yoki ofitsiantni chaqiring.');
+    } finally {
+      setIsPlacingOrder(false);
+    }
+>>>>>>> 4ee2c584503d0bb61ecb47c880a3afd7956c32da
   };
 
   const selectedProductData = selectedProduct ? products.find(p => p.id === selectedProduct) : null;
 
+<<<<<<< HEAD
   if (isLoading || platformLoading) return <PageLoader />;
+=======
+  if (isLoading) return <PageLoader />;
+
+  if (loadError) {
+    return (
+      <div className="min-h-screen bg-cream flex items-center justify-center p-6">
+        <div className="text-center max-w-md">
+          <AlertCircle className="w-14 h-14 text-danger mx-auto mb-4" />
+          <p className="text-lg font-bold text-espresso mb-2">Xatolik yuz berdi</p>
+          <p className="text-taupe">{loadError}</p>
+        </div>
+      </div>
+    );
+  }
+>>>>>>> 4ee2c584503d0bb61ecb47c880a3afd7956c32da
 
   return (
     <div className="min-h-screen bg-cream">
@@ -140,6 +242,7 @@ export default function CustomerMenu() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
+<<<<<<< HEAD
               <h1 className="text-2xl font-bold">{restaurant?.name ?? 'Restaurant'}</h1>
               <div className="flex items-center gap-2 mt-1">
                 {activeTable && (
@@ -154,6 +257,12 @@ export default function CustomerMenu() {
                   <Clock className="w-3 h-3" />
                   <span>10-25 min</span>
                 </div>
+=======
+              <h1 className="text-2xl font-bold">Rayhon Restaurant</h1>
+              <div className="flex items-center gap-1 text-sm text-latte mt-1">
+                <Clock className="w-3 h-3" />
+                <span>10-25 min</span>
+>>>>>>> 4ee2c584503d0bb61ecb47c880a3afd7956c32da
               </div>
             </div>
             <LanguageSwitcher />
@@ -161,6 +270,7 @@ export default function CustomerMenu() {
         </div>
       </header>
 
+<<<<<<< HEAD
       {/* Hero Banner with Promo */}
       <div className="relative bg-gradient-to-br from-terracotta via-danger to-terracotta text-white overflow-hidden">
         <div className="absolute inset-0 opacity-10">
@@ -245,6 +355,8 @@ export default function CustomerMenu() {
         </div>
       </div>
 
+=======
+>>>>>>> 4ee2c584503d0bb61ecb47c880a3afd7956c32da
       {/* Categories */}
       <div className="sticky top-[73px] z-30 bg-white border-y border-soft-sand shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
@@ -449,6 +561,14 @@ export default function CustomerMenu() {
                 <span className="text-lg text-taupe">Jami:</span>
                 <span className="text-3xl font-bold text-espresso">{formatCurrency(cartTotal)}</span>
               </div>
+<<<<<<< HEAD
+=======
+              {orderError && (
+                <div className="mb-4 text-sm text-danger bg-danger/10 rounded-button px-4 py-3">
+                  {orderError}
+                </div>
+              )}
+>>>>>>> 4ee2c584503d0bb61ecb47c880a3afd7956c32da
               <button
                 onClick={handlePlaceOrder}
                 disabled={isPlacingOrder || orderPlaced}

@@ -5,6 +5,12 @@ import { clearToken } from '../../lib/apiClient';
 import { authService } from '../../services/authService';
 import { restaurantService } from '../../services/restaurantService';
 import { userService } from '../../services/userService';
+<<<<<<< HEAD
+=======
+import { tableService } from '../../services/tableService';
+import { categoryService } from '../../services/categoryService';
+import { productService } from '../../services/productService';
+>>>>>>> 4ee2c584503d0bb61ecb47c880a3afd7956c32da
 
 interface CreatedAccount {
   role: string;
@@ -100,6 +106,93 @@ export default function QuickSetupPage() {
         addLog('✓ Mavjud restoran topildi: ' + restaurant.name);
       }
 
+<<<<<<< HEAD
+=======
+      // Demo ma'lumotlar: stollar, kategoriyalar, mahsulotlar
+      // (faqat restoran ENDI yangi yaratilgan bo'lsa, mavjudida qayta yaratmaymiz)
+      addLog("3.1/9 — Stollar tekshirilmoqda...");
+      try {
+        const existingTables = await tableService.list();
+        if (existingTables.length === 0) {
+          for (let i = 1; i <= 8; i++) {
+            await tableService.create({ number: i, seats: i % 2 === 0 ? 4 : 2, status: 'available' });
+          }
+          addLog('✓ 8 ta demo stol yaratildi.');
+        } else {
+          addLog(`✓ Stollar mavjud (${existingTables.length} ta), o'tkazib yuborildi.`);
+        }
+      } catch (err) {
+        addLog('⚠️ Stollarni yaratib bo\'lmadi: ' + (err instanceof Error ? err.message : 'noma\'lum xato'));
+      }
+
+      addLog("3.2/9 — Kategoriya va mahsulotlar tekshirilmoqda...");
+      try {
+        const existingCategories = await categoryService.list();
+        if (existingCategories.length === 0) {
+          const categoriesToCreate: { name: string; slug: string; products: { name: string; price: number }[] }[] = [
+            {
+              name: 'Taomlar',
+              slug: 'taomlar',
+              products: [
+                { name: 'Osh', price: 35000 },
+                { name: 'Lag\'mon', price: 30000 },
+                { name: 'Manti', price: 28000 },
+                { name: 'Shashlik', price: 40000 },
+              ],
+            },
+            {
+              name: 'Salatlar',
+              slug: 'salatlar',
+              products: [
+                { name: 'Achichuk salat', price: 12000 },
+                { name: 'Fasol salat', price: 15000 },
+              ],
+            },
+            {
+              name: 'Ichimliklar',
+              slug: 'ichimliklar',
+              products: [
+                { name: 'Choy', price: 5000 },
+                { name: 'Kola', price: 10000 },
+                { name: 'Ayron', price: 8000 },
+              ],
+            },
+            {
+              name: 'Shirinliklar',
+              slug: 'shirinliklar',
+              products: [
+                { name: 'Napoleon tort', price: 18000 },
+                { name: 'Muzqaymoq', price: 12000 },
+              ],
+            },
+          ];
+
+          for (const cat of categoriesToCreate) {
+            const created = await categoryService.create({
+              name: { uz: cat.name, ru: cat.name, en: cat.name },
+              slug: cat.slug,
+            });
+            for (const prod of cat.products) {
+              await productService.create({
+                name: { uz: prod.name, ru: prod.name, en: prod.name },
+                description: { uz: '', ru: '', en: '' },
+                price: prod.price,
+                categoryId: created.id,
+                image: '',
+                available: true,
+                prepTime: 15,
+              });
+            }
+          }
+          addLog('✓ Demo menyu (kategoriya + mahsulotlar) yaratildi.');
+        } else {
+          addLog(`✓ Kategoriyalar mavjud (${existingCategories.length} ta), o'tkazib yuborildi.`);
+        }
+      } catch (err) {
+        addLog('⚠️ Menyuni yaratib bo\'lmadi: ' + (err instanceof Error ? err.message : 'noma\'lum xato'));
+      }
+
+>>>>>>> 4ee2c584503d0bb61ecb47c880a3afd7956c32da
       const newAccounts: CreatedAccount[] = [
         { role: 'super-admin', name: 'Super Admin', email: superAdminEmail, password: SETUP_PASSWORD },
       ];

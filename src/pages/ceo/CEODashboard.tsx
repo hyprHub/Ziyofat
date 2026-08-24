@@ -15,6 +15,12 @@ import {
   Users,
   Wallet,
   Receipt,
+<<<<<<< HEAD
+=======
+  Grid3x3,
+  Plus,
+  Trash2,
+>>>>>>> 4ee2c584503d0bb61ecb47c880a3afd7956c32da
 } from 'lucide-react';
 import LanguageSwitcher from '../../components/common/LanguageSwitcher';
 import UserMenu from '../../components/common/UserMenu';
@@ -30,10 +36,54 @@ export default function CEODashboard() {
     products,
     transactions,
     isLoading: restaurantLoading,
+<<<<<<< HEAD
+=======
+    createTable,
+    removeTable,
+>>>>>>> 4ee2c584503d0bb61ecb47c880a3afd7956c32da
   } = useRestaurant();
   const { restaurants, isLoading: platformLoading } = usePlatform();
   const { currentUser } = useAuth();
   const [period, setPeriod] = useState<(typeof periods)[number]>('month');
+<<<<<<< HEAD
+=======
+  const [view, setView] = useState<'analytics' | 'tables'>('analytics');
+
+  // Yangi stol qo'shish formasi
+  const [newTableNumber, setNewTableNumber] = useState('');
+  const [newTableSeats, setNewTableSeats] = useState('4');
+  const [isAddingTable, setIsAddingTable] = useState(false);
+  const [tableError, setTableError] = useState<string | null>(null);
+
+  const handleAddTable = async () => {
+    const number = parseInt(newTableNumber, 10);
+    const seats = parseInt(newTableSeats, 10);
+    if (!number || number <= 0) {
+      setTableError("Stol raqamini to'g'ri kiriting.");
+      return;
+    }
+    if (tables.some((tb) => tb.number === number)) {
+      setTableError(`#${number} raqamli stol allaqachon mavjud.`);
+      return;
+    }
+    setTableError(null);
+    setIsAddingTable(true);
+    try {
+      await createTable({ number, seats: seats > 0 ? seats : 4 });
+      setNewTableNumber('');
+      setNewTableSeats('4');
+    } catch {
+      setTableError("Stol qo'shib bo'lmadi. Qaytadan urinib ko'ring.");
+    } finally {
+      setIsAddingTable(false);
+    }
+  };
+
+  const handleRemoveTable = async (tableId: string, tableNumber: number) => {
+    if (!window.confirm(`#${tableNumber} raqamli stolni o'chirmoqchimisiz?`)) return;
+    await removeTable(tableId);
+  };
+>>>>>>> 4ee2c584503d0bb61ecb47c880a3afd7956c32da
 
   const completedOrders = useMemo(
     () => orders.filter((o) => o.status === 'completed' || o.status === 'served'),
@@ -174,6 +224,7 @@ export default function CEODashboard() {
         </div>
 
         <nav className="p-4 space-y-2">
+<<<<<<< HEAD
           {periods.map((p) => (
             <button
               key={p}
@@ -188,6 +239,47 @@ export default function CEODashboard() {
               {period === p && <div className="w-2 h-2 rounded-full bg-terracotta" />}
             </button>
           ))}
+=======
+          <button
+            onClick={() => setView('analytics')}
+            className={`w-full text-left px-4 py-3 rounded-button transition-all flex items-center gap-2 ${
+              view === 'analytics'
+                ? 'bg-white/10 text-white font-semibold'
+                : 'text-latte hover:bg-white/5 hover:text-white'
+            }`}
+          >
+            <TrendingUp className="w-4 h-4" /> Analitika
+          </button>
+          <button
+            onClick={() => setView('tables')}
+            className={`w-full text-left px-4 py-3 rounded-button transition-all flex items-center gap-2 ${
+              view === 'tables'
+                ? 'bg-white/10 text-white font-semibold'
+                : 'text-latte hover:bg-white/5 hover:text-white'
+            }`}
+          >
+            <Grid3x3 className="w-4 h-4" /> Stollar
+          </button>
+
+          {view === 'analytics' && (
+            <div className="pt-2 mt-2 border-t border-white/10 space-y-2">
+              {periods.map((p) => (
+                <button
+                  key={p}
+                  onClick={() => setPeriod(p)}
+                  className={`w-full text-left px-4 py-3 rounded-button transition-all flex items-center justify-between ${
+                    period === p
+                      ? 'bg-white/10 text-white font-semibold'
+                      : 'text-latte hover:bg-white/5 hover:text-white'
+                  }`}
+                >
+                  <span>{t(`ceo.${p}`)}</span>
+                  {period === p && <div className="w-2 h-2 rounded-full bg-terracotta" />}
+                </button>
+              ))}
+            </div>
+          )}
+>>>>>>> 4ee2c584503d0bb61ecb47c880a3afd7956c32da
         </nav>
 
         <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-white/10">
@@ -220,6 +312,10 @@ export default function CEODashboard() {
           </div>
         </header>
 
+<<<<<<< HEAD
+=======
+        {view === 'analytics' && (
+>>>>>>> 4ee2c584503d0bb61ecb47c880a3afd7956c32da
         <div className="p-8">
           {/* KPI Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -490,6 +586,83 @@ export default function CEODashboard() {
             </div>
           </div>
         </div>
+<<<<<<< HEAD
+=======
+        )}
+
+        {view === 'tables' && (
+          <div className="p-8">
+            <div className="bg-white rounded-card shadow-sm border-2 border-soft-sand p-6 mb-8 max-w-xl">
+              <h3 className="text-lg font-bold text-espresso mb-4 flex items-center gap-2">
+                <Plus className="w-5 h-5 text-terracotta" /> Yangi stol qo'shish
+              </h3>
+              <div className="flex flex-wrap items-end gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-taupe mb-1">Stol raqami</label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={newTableNumber}
+                    onChange={(e) => setNewTableNumber(e.target.value)}
+                    placeholder="Masalan: 9"
+                    className="w-32 px-3 py-2 rounded-button border-2 border-soft-sand focus:border-terracotta outline-none text-espresso"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-taupe mb-1">O'rinlar soni</label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={newTableSeats}
+                    onChange={(e) => setNewTableSeats(e.target.value)}
+                    className="w-28 px-3 py-2 rounded-button border-2 border-soft-sand focus:border-terracotta outline-none text-espresso"
+                  />
+                </div>
+                <button
+                  onClick={handleAddTable}
+                  disabled={isAddingTable}
+                  className="px-5 py-2.5 rounded-button bg-gradient-to-r from-terracotta to-danger text-white font-bold shadow-md hover:shadow-lg transition-all disabled:opacity-60"
+                >
+                  {isAddingTable ? "Qo'shilmoqda..." : "Qo'shish"}
+                </button>
+              </div>
+              {tableError && (
+                <div className="mt-3 text-sm text-danger bg-danger/10 rounded-button px-4 py-2">{tableError}</div>
+              )}
+            </div>
+
+            <h3 className="text-xl font-bold text-espresso mb-6 flex items-center gap-2">
+              <Grid3x3 className="w-5 h-5 text-terracotta" /> Barcha stollar ({tables.length})
+            </h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+              {[...tables]
+                .sort((a, b) => a.number - b.number)
+                .map((table) => (
+                  <div
+                    key={table.id}
+                    className="bg-white rounded-card p-5 shadow-sm border-2 border-soft-sand text-center relative group"
+                  >
+                    <button
+                      onClick={() => handleRemoveTable(table.id, table.number)}
+                      title="Stolni o'chirish"
+                      className="absolute top-2 right-2 w-7 h-7 rounded-button bg-danger/10 text-danger flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                    <div className="text-2xl font-bold text-espresso mb-1">#{table.number}</div>
+                    <div className="text-xs text-taupe mb-1">{table.seats} o'rin</div>
+                    <div className="text-xs font-semibold text-taupe capitalize">{table.status}</div>
+                  </div>
+                ))}
+              {tables.length === 0 && (
+                <div className="col-span-full text-center text-taupe py-8">
+                  Hozircha stollar yo'q — yuqoridagi formadan qo'shing.
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+>>>>>>> 4ee2c584503d0bb61ecb47c880a3afd7956c32da
       </div>
     </div>
   );

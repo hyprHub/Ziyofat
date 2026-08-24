@@ -273,6 +273,7 @@
     "noRestaurants": "Hali restoranlar yo'q",
     "noUsers": "Hali foydalanuvchilar yo'q",
     "confirmDeleteRestaurant": "Ushbu restoranni o'chirishni tasdiqlaysizmi?",
+<<<<<<< HEAD
     "confirmDeleteUser": "Ushbu foydalanuvchini o'chirishni tasdiqlaysizmi?",
     "plan": "Tarif",
     "price": "Narx",
@@ -309,6 +310,9 @@
     "activeCount": "Faol obunalar",
     "trialCount": "Sinov muddatida",
     "expiringSoon": "Tez orada tugaydi"
+=======
+    "confirmDeleteUser": "Ushbu foydalanuvchini o'chirishni tasdiqlaysizmi?"
+>>>>>>> 4ee2c584503d0bb61ecb47c880a3afd7956c32da
   },
   "notFound": {
     "title": "Sahifa topilmadi",

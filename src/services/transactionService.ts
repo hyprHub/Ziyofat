@@ -46,8 +46,14 @@ export const transactionService = {
 
   async update(id: string, patch: Partial<Transaction>): Promise<Transaction | undefined> {
     try {
+<<<<<<< HEAD
       // Swagger: PATCH /transactions (id bodyda beriladi, pathda emas)
       const raw = await api.patch<Record<string, unknown>>('/transactions', { id, ...patch });
+=======
+      // Swagger: PATCH /transactions/{id} tavsiya etiladi ("prefer PATCH /transactions/{id}").
+      // Eski PATCH /transactions (id bodyda) ham mavjud, lekin "legacy" deb belgilangan.
+      const raw = await api.patch<Record<string, unknown>>(`/transactions/${id}`, patch);
+>>>>>>> 4ee2c584503d0bb61ecb47c880a3afd7956c32da
       return mapTransaction(raw);
     } catch (err) {
       console.error('Tranzaksiyani yangilab bo\'lmadi:', err);
@@ -55,7 +61,10 @@ export const transactionService = {
     }
   },
 
+<<<<<<< HEAD
   // ⚠️ Swagger'da DELETE /transactions hujjatlashtirilmagan — best-effort.
+=======
+>>>>>>> 4ee2c584503d0bb61ecb47c880a3afd7956c32da
   async remove(id: string): Promise<boolean> {
     try {
       await api.delete(`/transactions/${id}`);

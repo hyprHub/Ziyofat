@@ -33,6 +33,11 @@ interface RestaurantContextType {
   error: string | null;
   updateOrderStatus: (orderId: string, status: OrderStatus) => Promise<void>;
   updateTableStatus: (tableId: string, status: TableStatus) => Promise<void>;
+<<<<<<< HEAD
+=======
+  createTable: (data: { number: number; seats: number }) => Promise<Table>;
+  removeTable: (tableId: string) => Promise<boolean>;
+>>>>>>> 4ee2c584503d0bb61ecb47c880a3afd7956c32da
   createOrder: (order: {
     tableId: string;
     customerId?: string;
@@ -43,6 +48,10 @@ interface RestaurantContextType {
   createProduct: (product: Omit<Product, 'id'>) => Promise<Product>;
   updateProduct: (productId: string, patch: Partial<Product>) => Promise<void>;
   removeProduct: (productId: string) => Promise<void>;
+<<<<<<< HEAD
+=======
+  createCategory: (category: Omit<Category, 'id'>) => Promise<Category>;
+>>>>>>> 4ee2c584503d0bb61ecb47c880a3afd7956c32da
   createServiceRequest: (tableId: string, type: 'waiter' | 'bill' | 'water') => Promise<void>;
   completeServiceRequest: (requestId: string) => Promise<void>;
   payOrder: (orderId: string, paymentMethod: PaymentMethod) => Promise<void>;
@@ -104,6 +113,7 @@ export const RestaurantProvider = ({ children }: { children: ReactNode }) => {
     // bu qolgan barcha ma'lumotlarni (orders, tables, products...) ham
     // butunlay bloklab qo'ymasligi kerak. Promise.all bilan birinchi xato
     // hammasini rad etib, sahifa "bo'sh/muzlagan" ko'rinishda qolar edi.
+<<<<<<< HEAD
     const results = await Promise.allSettled([
       orderService.list(restaurantId),
       tableService.list(),
@@ -111,6 +121,20 @@ export const RestaurantProvider = ({ children }: { children: ReactNode }) => {
       categoryService.list(),
       serviceRequestService.list(),
       transactionService.list(restaurantId),
+=======
+    // Tranzaksiyalar (moliyaviy hisobot) faqat kassir/admin/CEO/super-admin uchun kerak —
+    // backend boshqa rollar (ofitsiant, oshpaz) uchun 403 qaytaradi, shuning uchun
+    // ularga bu so'rovni umuman yubormaymiz (keraksiz xato va tarmoq so'rovining oldini olamiz).
+    const canViewTransactions = !!currentUser && ['cashier', 'admin', 'ceo', 'super-admin'].includes(currentUser.role);
+
+    const results = await Promise.allSettled([
+      orderService.list(restaurantId),
+      tableService.list(),
+      productService.list(restaurantId),
+      categoryService.list(restaurantId),
+      serviceRequestService.list(),
+      canViewTransactions ? transactionService.list(restaurantId) : Promise.resolve([]),
+>>>>>>> 4ee2c584503d0bb61ecb47c880a3afd7956c32da
     ]);
 
     const [ordersRes, tablesRes, productsRes, categoriesRes, requestsRes, transactionsRes] = results;
@@ -155,6 +179,23 @@ export const RestaurantProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
+<<<<<<< HEAD
+=======
+  const createTable = useCallback(async (data: { number: number; seats: number }) => {
+    const created = await tableService.create({ number: data.number, seats: data.seats, status: 'available' });
+    setTables((prev) => [...prev, created].sort((a, b) => a.number - b.number));
+    return created;
+  }, []);
+
+  const removeTable = useCallback(async (tableId: string) => {
+    const ok = await tableService.remove(tableId);
+    if (ok) {
+      setTables((prev) => prev.filter((table) => table.id !== tableId));
+    }
+    return ok;
+  }, []);
+
+>>>>>>> 4ee2c584503d0bb61ecb47c880a3afd7956c32da
   const createOrder = useCallback(
     async (orderData: { tableId: string; customerId?: string; items: { productId: string; quantity: number }[] }) => {
       try {
@@ -246,6 +287,15 @@ export const RestaurantProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
+<<<<<<< HEAD
+=======
+  const createCategory = useCallback(async (data: Omit<Category, 'id'>) => {
+    const created = await categoryService.create(data);
+    setCategories((prev) => [...prev, created]);
+    return created;
+  }, []);
+
+>>>>>>> 4ee2c584503d0bb61ecb47c880a3afd7956c32da
   const createServiceRequest = useCallback(
     async (tableId: string, type: 'waiter' | 'bill' | 'water') => {
       const created = await serviceRequestService.create({
@@ -348,12 +398,21 @@ export const RestaurantProvider = ({ children }: { children: ReactNode }) => {
     error,
     updateOrderStatus,
     updateTableStatus,
+<<<<<<< HEAD
+=======
+    createTable,
+    removeTable,
+>>>>>>> 4ee2c584503d0bb61ecb47c880a3afd7956c32da
     createOrder,
     addOrderItem,
     updateProductAvailability,
     createProduct,
     updateProduct,
     removeProduct,
+<<<<<<< HEAD
+=======
+    createCategory,
+>>>>>>> 4ee2c584503d0bb61ecb47c880a3afd7956c32da
     createServiceRequest,
     completeServiceRequest,
     payOrder,

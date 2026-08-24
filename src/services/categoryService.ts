@@ -12,8 +12,14 @@ function mapCategory(raw: Record<string, unknown>): Category {
 }
 
 export const categoryService = {
+<<<<<<< HEAD
   async list(): Promise<Category[]> {
     const raw = await api.get<Record<string, unknown>[]>('/categories');
+=======
+  async list(restaurantId?: string): Promise<Category[]> {
+    const query = restaurantId ? `?restaurantId=${encodeURIComponent(restaurantId)}` : '';
+    const raw = await api.get<Record<string, unknown>[]>(`/categories${query}`);
+>>>>>>> 4ee2c584503d0bb61ecb47c880a3afd7956c32da
     return (raw ?? []).map(mapCategory);
   },
 

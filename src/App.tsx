@@ -5,7 +5,10 @@ import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import LoginPage from './pages/login/LoginPage';
 import QuickSetupPage from './pages/setup/QuickSetupPage';
+<<<<<<< HEAD
 import CustomerMenu from './pages/customer/CustomerMenu';
+=======
+>>>>>>> 4ee2c584503d0bb61ecb47c880a3afd7956c32da
 import KitchenDisplay from './pages/kitchen/KitchenDisplay';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import WaiterInterface from './pages/waiter/WaiterInterface';
@@ -26,7 +29,10 @@ function App() {
             <Route path="/setup" element={<QuickSetupPage />} />
 
             {/* Mijoz uchun menyu login talab qilmaydi (QR orqali ochiladi) */}
+<<<<<<< HEAD
             <Route path="/menu/:restaurantSlug/:tableToken" element={<CustomerMenu />} />
+=======
+>>>>>>> 4ee2c584503d0bb61ecb47c880a3afd7956c32da
 
             <Route
               path="/kitchen"

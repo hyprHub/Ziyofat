@@ -20,12 +20,25 @@ import {
   Smile,
   Settings as SettingsIcon,
   Save,
+<<<<<<< HEAD
+=======
+  Plus,
+  Trash2,
+  Layers,
+  Upload,
+>>>>>>> 4ee2c584503d0bb61ecb47c880a3afd7956c32da
 } from 'lucide-react';
 import LanguageSwitcher from '../../components/common/LanguageSwitcher';
 import UserMenu from '../../components/common/UserMenu';
 import PageLoader from '../../components/common/PageLoader';
 import { useAuth } from '../../contexts/AuthContext';
 import { customerService } from '../../services/customerService';
+<<<<<<< HEAD
+=======
+import { ApiError } from '../../lib/apiClient';
+import { seedCategories } from '../../data/seed/categories.seed';
+import { seedProducts } from '../../data/seed/products.seed';
+>>>>>>> 4ee2c584503d0bb61ecb47c880a3afd7956c32da
 import type { User, UserRole, Customer, OrderStatus, TableStatus } from '../../types';
 
 const STAFF_ROLES: UserRole[] = ['cashier', 'ceo', 'waiter', 'kitchen'];
@@ -61,6 +74,13 @@ export default function AdminDashboard() {
     isLoading,
     updateProductAvailability,
     updateTableStatus,
+<<<<<<< HEAD
+=======
+    createTable,
+    removeTable,
+    createProduct,
+    createCategory,
+>>>>>>> 4ee2c584503d0bb61ecb47c880a3afd7956c32da
   } = useRestaurant();
   const { currentUser } = useAuth();
   const { createUser, restaurants, updateRestaurant } = usePlatform();
@@ -68,6 +88,24 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
 
   const [showStaffModal, setShowStaffModal] = useState(false);
+<<<<<<< HEAD
+=======
+
+  // Stol qo'shish/o'chirish
+  const [showAddTableModal, setShowAddTableModal] = useState(false);
+  const [bulkCount, setBulkCount] = useState(1);
+  const [bulkSeats, setBulkSeats] = useState(4);
+  const [bulkStartNumber, setBulkStartNumber] = useState(1);
+  const [isAddingTables, setIsAddingTables] = useState(false);
+  const [addTableError, setAddTableError] = useState<string | null>(null);
+  const [deletingTable, setDeletingTable] = useState<{ id: string; number: number } | null>(null);
+  const [isDeletingTable, setIsDeletingTable] = useState(false);
+  const [tableActionError, setTableActionError] = useState<string | null>(null);
+  // Namuna menyuni (kategoriya + mahsulotlar) bazaga bir martalik yuklash uchun holat
+  const [isSeedingMenu, setIsSeedingMenu] = useState(false);
+  const [seedMenuError, setSeedMenuError] = useState<string | null>(null);
+  const [seedMenuProgress, setSeedMenuProgress] = useState<{ done: number; total: number } | null>(null);
+>>>>>>> 4ee2c584503d0bb61ecb47c880a3afd7956c32da
   const [staffForm, setStaffForm] = useState(emptyStaff);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -130,6 +168,52 @@ export default function AdminDashboard() {
     }
   };
 
+<<<<<<< HEAD
+=======
+  // Bazada hali hech qanday mahsulot/kategoriya yo'q bo'lsa, tayyor namuna menyuni
+  // (7 kategoriya, 34 mahsulot — data/seed/ ichida) backend orqali bir martalik yaratib beradi.
+  const handleSeedMenu = async () => {
+    setIsSeedingMenu(true);
+    setSeedMenuError(null);
+    const total = seedCategories.length + seedProducts.length;
+    let done = 0;
+    setSeedMenuProgress({ done: 0, total });
+
+    // Seed fayldagi eski id (masalan 'cat-1') bilan backend beradigan yangi id mos kelmaydi,
+    // shuning uchun mahsulot yaratishda categoryId'ni almashtirish uchun xarita tuzamiz.
+    const categoryIdMap = new Map<string, string>();
+
+    try {
+      for (const cat of seedCategories) {
+        const created = await createCategory({ name: cat.name, slug: cat.slug });
+        categoryIdMap.set(cat.id, created.id);
+        done += 1;
+        setSeedMenuProgress({ done, total });
+      }
+
+      for (const prod of seedProducts) {
+        const categoryId = categoryIdMap.get(prod.categoryId) ?? prod.categoryId;
+        await createProduct({
+          name: prod.name,
+          description: prod.description,
+          price: prod.price,
+          categoryId,
+          image: prod.image,
+          available: prod.available,
+          prepTime: prod.prepTime,
+        });
+        done += 1;
+        setSeedMenuProgress({ done, total });
+      }
+    } catch (err) {
+      console.error('Namuna menyuni yuklab bo\'lmadi:', err);
+      setSeedMenuError('Menyuni yuklashda xatolik yuz berdi. Birozdan keyin qayta urinib ko\'ring.');
+    } finally {
+      setIsSeedingMenu(false);
+    }
+  };
+
+>>>>>>> 4ee2c584503d0bb61ecb47c880a3afd7956c32da
   if (isLoading) return <PageLoader />;
 
   const closeStaffModal = () => {
@@ -169,6 +253,72 @@ export default function AdminDashboard() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+<<<<<<< HEAD
+=======
+  const openAddTableModal = () => {
+    const nextNumber = tables.length > 0 ? Math.max(...tables.map((t) => t.number)) + 1 : 1;
+    setBulkStartNumber(nextNumber);
+    setBulkCount(1);
+    setBulkSeats(4);
+    setAddTableError(null);
+    setShowAddTableModal(true);
+  };
+
+  const handleAddTables = async () => {
+    const count = Math.max(1, Math.min(100, Math.floor(bulkCount) || 1));
+    const seats = Math.max(1, Math.floor(bulkSeats) || 1);
+    const startNumber = Math.max(1, Math.floor(bulkStartNumber) || 1);
+
+    const existingNumbers = new Set(tables.map((t) => t.number));
+    const clashing: number[] = [];
+    for (let i = 0; i < count; i++) {
+      const num = startNumber + i;
+      if (existingNumbers.has(num)) clashing.push(num);
+    }
+    if (clashing.length > 0) {
+      setAddTableError(`Bu raqam(lar) allaqachon band: ${clashing.join(', ')}. Boshqa raqamdan boshlang.`);
+      return;
+    }
+
+    setIsAddingTables(true);
+    setAddTableError(null);
+    let createdCount = 0;
+    try {
+      for (let i = 0; i < count; i++) {
+        await createTable({ number: startNumber + i, seats });
+        createdCount += 1;
+      }
+      setShowAddTableModal(false);
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : "Stol qo'shib bo'lmadi";
+      setAddTableError(
+        createdCount > 0
+          ? `${createdCount} ta stol qo'shildi, so'ng xato yuz berdi: ${message}`
+          : message
+      );
+    } finally {
+      setIsAddingTables(false);
+    }
+  };
+
+  const handleConfirmDeleteTable = async () => {
+    if (!deletingTable) return;
+    setIsDeletingTable(true);
+    setTableActionError(null);
+    try {
+      const ok = await removeTable(deletingTable.id);
+      if (!ok) {
+        setTableActionError("Stolni o'chirib bo'lmadi. Stol band bo'lishi yoki faol buyurtmasi bo'lishi mumkin.");
+      } else {
+        setDeletingTable(null);
+      }
+    } catch (err) {
+      setTableActionError(err instanceof ApiError ? err.message : "Stolni o'chirib bo'lmadi");
+    } finally {
+      setIsDeletingTable(false);
+    }
+  };
+>>>>>>> 4ee2c584503d0bb61ecb47c880a3afd7956c32da
 
   // Calculate KPIs
   const todayRevenue = orders
@@ -631,6 +781,7 @@ export default function AdminDashboard() {
 
         {activeTab === 'tables' && (
           <div className="p-8">
+<<<<<<< HEAD
             <h3 className="text-xl font-bold text-espresso mb-6 flex items-center gap-2">
               🪑 {t('navigation.tables')}
             </h3>
@@ -651,6 +802,36 @@ export default function AdminDashboard() {
                     <option value="reserved">reserved</option>
                   </select>
                 </div>
+=======
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-espresso flex items-center gap-2">
+                🪑 {t('navigation.tables')}
+                <span className="text-sm font-semibold text-taupe">({tables.length} ta)</span>
+              </h3>
+              <button
+                onClick={openAddTableModal}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-button bg-gradient-to-br from-terracotta to-danger text-white font-semibold text-sm hover:shadow-lg transition-all"
+              >
+                <Plus className="w-4 h-4" /> Stol qo'shish
+              </button>
+            </div>
+
+            {tableActionError && (
+              <div className="mb-4 text-sm text-danger bg-danger/10 rounded-button px-4 py-3 flex items-center justify-between">
+                <span>{tableActionError}</span>
+                <button onClick={() => setTableActionError(null)}><X className="w-4 h-4" /></button>
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+              {tables.map((table) => (
+                <TableCard
+                  key={table.id}
+                  table={table}
+                  onStatusChange={(status) => updateTableStatus(table.id, status)}
+                  onDelete={() => setDeletingTable({ id: table.id, number: table.number })}
+                />
+>>>>>>> 4ee2c584503d0bb61ecb47c880a3afd7956c32da
               ))}
               {tables.length === 0 && (
                 <div className="col-span-full text-center text-taupe py-8">Stollar topilmadi</div>
@@ -661,9 +842,34 @@ export default function AdminDashboard() {
 
         {activeTab === 'menu' && (
           <div className="p-8">
+<<<<<<< HEAD
             <h3 className="text-xl font-bold text-espresso mb-6 flex items-center gap-2">
               📋 {t('navigation.menu')}
             </h3>
+=======
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-espresso flex items-center gap-2">
+                📋 {t('navigation.menu')}
+              </h3>
+              {products.length === 0 && (
+                <button
+                  onClick={handleSeedMenu}
+                  disabled={isSeedingMenu}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-button bg-gradient-to-r from-terracotta to-danger text-white font-bold text-sm shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  <Upload className="w-4 h-4" />
+                  {isSeedingMenu
+                    ? `Yuklanmoqda... (${seedMenuProgress?.done ?? 0}/${seedMenuProgress?.total ?? 0})`
+                    : 'Namuna menyuni yuklash'}
+                </button>
+              )}
+            </div>
+            {seedMenuError && (
+              <div className="mb-4 p-3 rounded-button bg-danger/10 text-danger text-sm font-medium">
+                {seedMenuError}
+              </div>
+            )}
+>>>>>>> 4ee2c584503d0bb61ecb47c880a3afd7956c32da
             {categories.map((cat) => {
               const catProducts = products.filter((p) => p.categoryId === cat.id);
               if (catProducts.length === 0) return null;
@@ -692,7 +898,17 @@ export default function AdminDashboard() {
                 </div>
               );
             })}
+<<<<<<< HEAD
             {products.length === 0 && <div className="text-center text-taupe py-8">Menyu bo'sh</div>}
+=======
+            {products.length === 0 && (
+              <div className="text-center text-taupe py-12">
+                <div className="text-5xl mb-3">🍽️</div>
+                <p className="font-semibold mb-1">Menyu bo'sh</p>
+                <p className="text-sm">Yuqoridagi "Namuna menyuni yuklash" tugmasini bosing.</p>
+              </div>
+            )}
+>>>>>>> 4ee2c584503d0bb61ecb47c880a3afd7956c32da
           </div>
         )}
 
@@ -880,6 +1096,146 @@ export default function AdminDashboard() {
         )}
       </div>
 
+<<<<<<< HEAD
+=======
+      {/* Stol qo'shish modali (bitta yoki ommaviy) */}
+      {showAddTableModal && (
+        <div className="fixed inset-0 bg-espresso/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-card shadow-2xl max-w-md w-full">
+            <div className="flex items-center justify-between p-6 border-b border-soft-sand">
+              <h3 className="text-xl font-bold text-espresso flex items-center gap-2">
+                <Layers className="w-5 h-5 text-terracotta" />
+                Stol qo'shish
+              </h3>
+              <button
+                onClick={() => setShowAddTableModal(false)}
+                className="text-taupe hover:text-espresso transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-espresso mb-2">
+                  Nechta stol qo'shmoqchisiz?
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={100}
+                  value={bulkCount}
+                  onChange={(e) => setBulkCount(Number(e.target.value))}
+                  className="w-full px-4 py-3 rounded-button border-2 border-soft-sand bg-cream text-espresso focus:outline-none focus:ring-2 focus:ring-terracotta focus:border-terracotta transition-colors"
+                />
+                <p className="text-xs text-taupe mt-1.5">
+                  Masalan: 20 kiritsangiz, 20 ta stol birdaniga yaratiladi.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-semibold text-espresso mb-2">
+                    Boshlang'ich raqam
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={bulkStartNumber}
+                    onChange={(e) => setBulkStartNumber(Number(e.target.value))}
+                    className="w-full px-4 py-3 rounded-button border-2 border-soft-sand bg-cream text-espresso focus:outline-none focus:ring-2 focus:ring-terracotta focus:border-terracotta transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-espresso mb-2">
+                    O'rindiqlar soni
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={bulkSeats}
+                    onChange={(e) => setBulkSeats(Number(e.target.value))}
+                    className="w-full px-4 py-3 rounded-button border-2 border-soft-sand bg-cream text-espresso focus:outline-none focus:ring-2 focus:ring-terracotta focus:border-terracotta transition-colors"
+                  />
+                </div>
+              </div>
+
+              {bulkCount > 1 && (
+                <div className="text-xs text-taupe bg-soft-sand px-3 py-2 rounded-button">
+                  Yaratiladi: <strong className="text-espresso">#{bulkStartNumber}</strong> dan{' '}
+                  <strong className="text-espresso">
+                    #{bulkStartNumber + Math.max(1, Math.floor(bulkCount) || 1) - 1}
+                  </strong>{' '}
+                  gacha, har biri {bulkSeats} o'rindiqli.
+                </div>
+              )}
+
+              {addTableError && (
+                <div className="text-sm text-danger bg-danger/10 rounded-button px-4 py-3">{addTableError}</div>
+              )}
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => setShowAddTableModal(false)}
+                  className="flex-1 py-3 rounded-button border-2 border-soft-sand text-espresso font-semibold hover:border-terracotta transition-colors"
+                >
+                  Bekor qilish
+                </button>
+                <button
+                  onClick={handleAddTables}
+                  disabled={isAddingTables}
+                  className="flex-1 py-3 rounded-button bg-gradient-to-br from-terracotta to-danger text-white font-semibold hover:shadow-lg transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+                >
+                  {isAddingTables ? (
+                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <Plus className="w-4 h-4" /> Qo'shish
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Stolni o'chirishni tasdiqlash modali */}
+      {deletingTable && (
+        <div className="fixed inset-0 bg-espresso/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-card shadow-2xl max-w-sm w-full p-6">
+            <h3 className="text-lg font-bold text-espresso mb-2">
+              Stol #{deletingTable.number}ni o'chirasizmi?
+            </h3>
+            <p className="text-sm text-taupe mb-4">
+              Bu amalni ortga qaytarib bo'lmaydi. Agar stolda faol buyurtma bo'lsa, o'chirish rad etiladi.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeletingTable(null)}
+                className="flex-1 py-3 rounded-button border-2 border-soft-sand text-espresso font-semibold hover:border-terracotta transition-colors"
+              >
+                Bekor qilish
+              </button>
+              <button
+                onClick={handleConfirmDeleteTable}
+                disabled={isDeletingTable}
+                className="flex-1 py-3 rounded-button bg-danger text-white font-semibold hover:shadow-lg transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+              >
+                {isDeletingTable ? (
+                  <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" /> O'chirish
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+>>>>>>> 4ee2c584503d0bb61ecb47c880a3afd7956c32da
       {/* Staff creation modal */}
       {showStaffModal && (
         <div className="fixed inset-0 bg-espresso/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -1019,3 +1375,41 @@ export default function AdminDashboard() {
     </div>
   );
 }
+<<<<<<< HEAD
+=======
+
+function TableCard({
+  table,
+  onStatusChange,
+  onDelete,
+}: {
+  table: { id: string; number: number; seats: number; status: TableStatus };
+  onStatusChange: (status: TableStatus) => void;
+  onDelete: () => void;
+}) {
+  return (
+    <div className="relative bg-white rounded-card p-5 shadow-sm border-2 border-soft-sand text-center">
+      <button
+        onClick={onDelete}
+        title="Stolni o'chirish"
+        className="absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center text-taupe hover:text-danger hover:bg-danger/10 transition-colors"
+      >
+        <Trash2 className="w-3.5 h-3.5" />
+      </button>
+      <div className="text-2xl font-bold text-espresso mb-1">#{table.number}</div>
+      <div className="text-xs text-taupe mb-3">{table.seats} o'rin</div>
+      <select
+        value={table.status}
+        onChange={(e) => onStatusChange(e.target.value as TableStatus)}
+        className={`w-full text-xs font-bold rounded-button px-2 py-2 border-none outline-none ${tableStatusColors[table.status]}`}
+      >
+        <option value="available">available</option>
+        <option value="occupied">occupied</option>
+        <option value="waiting">waiting</option>
+        <option value="cleaning">cleaning</option>
+        <option value="reserved">reserved</option>
+      </select>
+    </div>
+  );
+}
+>>>>>>> 4ee2c584503d0bb61ecb47c880a3afd7956c32da

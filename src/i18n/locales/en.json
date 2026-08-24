@@ -273,6 +273,7 @@
     "noRestaurants": "No restaurants yet",
     "noUsers": "No users yet",
     "confirmDeleteRestaurant": "Delete this restaurant?",
+<<<<<<< HEAD
     "confirmDeleteUser": "Delete this user?",
     "plan": "Plan",
     "price": "Price",
@@ -309,6 +310,9 @@
     "activeCount": "Active subscriptions",
     "trialCount": "On trial",
     "expiringSoon": "Expiring soon"
+=======
+    "confirmDeleteUser": "Delete this user?"
+>>>>>>> 4ee2c584503d0bb61ecb47c880a3afd7956c32da
   },
   "notFound": {
     "title": "Page not found",

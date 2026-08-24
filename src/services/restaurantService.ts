@@ -40,7 +40,10 @@ export const restaurantService = {
     return mapRestaurant(raw);
   },
 
+<<<<<<< HEAD
   // ⚠️ Swagger'da PATCH/DELETE /restaurants hujjatlashtirilmagan — best-effort.
+=======
+>>>>>>> 4ee2c584503d0bb61ecb47c880a3afd7956c32da
   async update(id: string, patch: Partial<Restaurant>): Promise<Restaurant | undefined> {
     try {
       const raw = await api.patch<Record<string, unknown>>(`/restaurants/${id}`, patch);

@@ -75,11 +75,40 @@ export const orderService = {
     }
   },
 
+<<<<<<< HEAD
   /**
    * Umumiy patch — asosan status o'zgarishi uchun ishlatiladi (backward-compat).
    * Item ro'yxatini o'zgartirish uchun maxsus endpoint hujjatlashtirilmagan, shu sabab
    * bu holatda best-effort umumiy PATCH /orders/:id chaqiramiz.
    */
+=======
+  /** Buyurtma itemlar ro'yxatini to'liq almashtirish — PATCH /orders/{id}/items */
+  async updateItems(
+    id: string,
+    items: { productId: string; quantity: number }[]
+  ): Promise<Order | undefined> {
+    try {
+      const raw = await api.patch<Record<string, unknown>>(`/orders/${id}/items`, { items });
+      return mapOrder(raw);
+    } catch (err) {
+      console.error('Buyurtma itemlarini yangilab bo\'lmadi:', err);
+      return undefined;
+    }
+  },
+
+  /** Buyurtmaga bitta item qo'shish/sonini oshirish — POST /orders/{id}/items */
+  async addItem(id: string, productId: string, quantity: number): Promise<Order | undefined> {
+    try {
+      const raw = await api.post<Record<string, unknown>>(`/orders/${id}/items`, { productId, quantity });
+      return mapOrder(raw);
+    } catch (err) {
+      console.error('Buyurtmaga mahsulot qo\'shib bo\'lmadi:', err);
+      return undefined;
+    }
+  },
+
+  /** Umumiy patch — status yoki customerId o'zgarishi uchun (PATCH /orders/{id}) */
+>>>>>>> 4ee2c584503d0bb61ecb47c880a3afd7956c32da
   async update(id: string, patch: Partial<Order>): Promise<Order | undefined> {
     if (patch.status && Object.keys(patch).every((k) => k === 'status' || k === 'updatedAt')) {
       return orderService.updateStatus(id, patch.status);
@@ -87,11 +116,21 @@ export const orderService = {
     if (patch.paymentMethod && patch.status === 'completed') {
       return orderService.pay(id, patch.paymentMethod);
     }
+<<<<<<< HEAD
+=======
+    if (patch.items) {
+      return orderService.updateItems(id, patch.items.map((i) => ({ productId: i.productId, quantity: i.quantity })));
+    }
+>>>>>>> 4ee2c584503d0bb61ecb47c880a3afd7956c32da
     try {
       const raw = await api.patch<Record<string, unknown>>(`/orders/${id}`, patch);
       return mapOrder(raw);
     } catch (err) {
+<<<<<<< HEAD
       console.error('Buyurtmani yangilab bo\'lmadi (backend bu amalni qo\'llamasligi mumkin):', err);
+=======
+      console.error('Buyurtmani yangilab bo\'lmadi:', err);
+>>>>>>> 4ee2c584503d0bb61ecb47c880a3afd7956c32da
       return undefined;
     }
   },
