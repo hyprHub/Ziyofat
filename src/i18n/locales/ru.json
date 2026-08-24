@@ -45,7 +45,16 @@
     "demoAccounts": "Демо-аккаунты (для теста)",
     "demoPasswordHint": "Пароль для всех демо-аккаунтов: demo123",
     "invalidCredentials": "Неверный email или пароль",
-    "fillAllFields": "Пожалуйста, заполните все поля"
+    "fillAllFields": "Пожалуйста, заполните все поля",
+    "registerFailed": "Ошибка при регистрации",
+    "noAccount": "Ещё нет аккаунта?",
+    "haveAccount": "Уже есть аккаунт?",
+    "registerTitle": "Регистрация супер-администратора",
+    "fullName": "Полное имя",
+    "regKey": "Ключ регистрации (x-reg-key)",
+    "regKeyHint": "Уточните этот ключ у администратора backend",
+    "register": "Зарегистрироваться",
+    "backToLogin": "Вернуться ко входу"
   },
   "dashboard": {
     "greeting": "Доброе утро,",
@@ -164,7 +173,9 @@
     "close": "Закрыть",
     "back": "Назад",
     "next": "Далее",
-    "language": "Язык"
+    "language": "Язык",
+    "loadError": "Ошибка при загрузке данных",
+    "actionError": "Ошибка при выполнении действия"
   },
   "cashier": {
     "title": "Касса",
@@ -262,6 +273,47 @@
     "noRestaurants": "Пока нет ресторанов",
     "noUsers": "Пока нет пользователей",
     "confirmDeleteRestaurant": "Удалить этот ресторан?",
-    "confirmDeleteUser": "Удалить этого пользователя?"
+    "confirmDeleteUser": "Удалить этого пользователя?",
+    "plan": "Тариф",
+    "price": "Цена",
+    "startDate": "Дата начала",
+    "renewalDate": "Дата продления",
+    "statusTrial": "Пробный период",
+    "statusExpired": "Истёк",
+    "statusCancelled": "Отменён",
+    "planBasic": "Базовый",
+    "planStandard": "Стандартный",
+    "planPremium": "Премиум",
+    "noSubscriptions": "Пока нет подписок",
+    "amount": "Сумма",
+    "date": "Дата",
+    "paymentPending": "Ожидание",
+    "paymentPaid": "Оплачено",
+    "paymentFailed": "Неудачно",
+    "paymentRefunded": "Возвращено",
+    "noPayments": "Пока нет платежей",
+    "actor": "Пользователь",
+    "action": "Действие",
+    "entity": "Объект",
+    "time": "Время",
+    "noLogs": "Журнал системы пуст",
+    "platformName": "Название платформы",
+    "defaultCurrency": "Основная валюта",
+    "supportEmail": "Email поддержки",
+    "saveSettings": "Сохранить",
+    "settingsSaved": "Настройки сохранены",
+    "settingsLoadError": "Не удалось загрузить настройки",
+    "totalPaid": "Всего оплачено",
+    "pendingCount": "В ожидании",
+    "monthlyRevenue": "Доход за месяц",
+    "activeCount": "Активные подписки",
+    "trialCount": "На пробном периоде",
+    "expiringSoon": "Скоро истекает"
+  },
+  "notFound": {
+    "title": "Страница не найдена",
+    "description": "Запрашиваемая страница не существует или была перемещена.",
+    "back": "Назад",
+    "home": "На главную"
   }
 }

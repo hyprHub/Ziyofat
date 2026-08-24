@@ -45,7 +45,16 @@
     "demoAccounts": "Demo hisoblar (sinov uchun)",
     "demoPasswordHint": "Barcha demo hisoblar uchun parol: demo123",
     "invalidCredentials": "Email yoki parol noto'g'ri",
-    "fillAllFields": "Iltimos, barcha maydonlarni to'ldiring"
+    "fillAllFields": "Iltimos, barcha maydonlarni to'ldiring",
+    "registerFailed": "Ro'yxatdan o'tishda xatolik yuz berdi",
+    "noAccount": "Hali ro'yxatdan o'tmaganmisiz?",
+    "haveAccount": "Hisobingiz bormi?",
+    "registerTitle": "Super-admin sifatida ro'yxatdan o'tish",
+    "fullName": "To'liq ism",
+    "regKey": "Ro'yxatdan o'tish kaliti (x-reg-key)",
+    "regKeyHint": "Bu kalitni backend administratoridan so'rang",
+    "register": "Ro'yxatdan o'tish",
+    "backToLogin": "Kirish sahifasiga qaytish"
   },
   "dashboard": {
     "greeting": "Xayrli tong,",
@@ -164,7 +173,9 @@
     "close": "Yopish",
     "back": "Orqaga",
     "next": "Keyingisi",
-    "language": "Til"
+    "language": "Til",
+    "loadError": "Ma'lumotlarni yuklashda xatolik yuz berdi",
+    "actionError": "Amalni bajarishda xatolik yuz berdi"
   },
   "cashier": {
     "title": "Kassa",
@@ -262,6 +273,47 @@
     "noRestaurants": "Hali restoranlar yo'q",
     "noUsers": "Hali foydalanuvchilar yo'q",
     "confirmDeleteRestaurant": "Ushbu restoranni o'chirishni tasdiqlaysizmi?",
-    "confirmDeleteUser": "Ushbu foydalanuvchini o'chirishni tasdiqlaysizmi?"
+    "confirmDeleteUser": "Ushbu foydalanuvchini o'chirishni tasdiqlaysizmi?",
+    "plan": "Tarif",
+    "price": "Narx",
+    "startDate": "Boshlanish sanasi",
+    "renewalDate": "Yangilanish sanasi",
+    "statusTrial": "Sinov muddati",
+    "statusExpired": "Muddati tugagan",
+    "statusCancelled": "Bekor qilingan",
+    "planBasic": "Boshlang'ich",
+    "planStandard": "Standart",
+    "planPremium": "Premium",
+    "noSubscriptions": "Hali obunalar yo'q",
+    "amount": "Summa",
+    "date": "Sana",
+    "paymentPending": "Kutilmoqda",
+    "paymentPaid": "To'langan",
+    "paymentFailed": "Muvaffaqiyatsiz",
+    "paymentRefunded": "Qaytarilgan",
+    "noPayments": "Hali to'lovlar yo'q",
+    "actor": "Foydalanuvchi",
+    "action": "Amal",
+    "entity": "Obyekt",
+    "time": "Vaqt",
+    "noLogs": "Hali tizim jurnali bo'sh",
+    "platformName": "Platforma nomi",
+    "defaultCurrency": "Asosiy valyuta",
+    "supportEmail": "Qo'llab-quvvatlash emaili",
+    "saveSettings": "Saqlash",
+    "settingsSaved": "Sozlamalar saqlandi",
+    "settingsLoadError": "Sozlamalarni yuklab bo'lmadi",
+    "totalPaid": "Jami to'langan",
+    "pendingCount": "Kutilayotganlar",
+    "monthlyRevenue": "Oylik daromad",
+    "activeCount": "Faol obunalar",
+    "trialCount": "Sinov muddatida",
+    "expiringSoon": "Tez orada tugaydi"
+  },
+  "notFound": {
+    "title": "Sahifa topilmadi",
+    "description": "Siz qidirayotgan sahifa mavjud emas yoki ko'chirilgan.",
+    "back": "Orqaga",
+    "home": "Bosh sahifa"
   }
 }

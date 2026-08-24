@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useCallback, useEffect } from 'rea
 import type { ReactNode } from 'react';
 import type { Restaurant, User } from '../types';
 import { restaurantService, userService } from '../services';
+import { useAuth } from './AuthContext';
 
 interface PlatformContextType {
   restaurants: Restaurant[];
@@ -28,19 +29,43 @@ export const usePlatform = () => {
   return context;
 };
 
+// Kassir, ofitsiant va oshpazga backend /restaurants va /users endpointlariga ruxsat bermaydi
+// (401 qaytaradi). Shu rollar uchun bu so'rovlarni umuman yubormaymiz — aks holda har sahifada
+// keraksiz 401 xatolar va sekinlik yuzaga keladi.
+const ROLES_NEEDING_RESTAURANTS = ['super-admin', 'ceo', 'admin', 'customer'];
+const ROLES_NEEDING_USERS = ['super-admin'];
+
 export const PlatformProvider = ({ children }: { children: ReactNode }) => {
+  const { currentUser, isLoading: isAuthLoading } = useAuth();
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Foydalanuvchi hali aniqlanmagan bo'lsa (masalan ochiq mijoz menyusi), ehtiyot bo'lib
+  // restoranlar ro'yxatini yuklashga urinamiz — lekin login qilingan holatda faqat ruxsati
+  // bor rollar uchun so'rov yuboramiz.
+  const role = currentUser?.role;
+  const needsRestaurants = !role || ROLES_NEEDING_RESTAURANTS.includes(role);
+  const needsUsers = !!role && ROLES_NEEDING_USERS.includes(role);
+
   const loadAll = useCallback(async () => {
+    // Auth holati hali tasdiqlanmagan bo'lsa, kesh orqali vaqtincha ko'rsatilgan
+    // (noaniq rolli) foydalanuvchi bilan keraksiz so'rov yubormaymiz.
+    if (isAuthLoading) return;
+    if (!needsRestaurants && !needsUsers) {
+      setRestaurants([]);
+      setUsers([]);
+      setIsLoading(false);
+      setError(null);
+      return;
+    }
     setIsLoading(true);
     setError(null);
     try {
       const [restaurantsData, usersData] = await Promise.all([
-        restaurantService.list(),
-        userService.list(),
+        needsRestaurants ? restaurantService.list() : Promise.resolve([]),
+        needsUsers ? userService.list() : Promise.resolve([]),
       ]);
       setRestaurants(restaurantsData);
       setUsers(usersData);
@@ -49,7 +74,7 @@ export const PlatformProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [needsRestaurants, needsUsers, isAuthLoading]);
 
   useEffect(() => {
     loadAll();

@@ -66,25 +66,12 @@ export default function WaiterInterface() {
   const handlePlaceOrder = () => {
     if (!selectedTable || cart.length === 0) return;
 
-    const subtotal = cart.reduce((sum, item) => {
-      const product = products.find(p => p.id === item.productId);
-      return sum + (product?.price || 0) * item.quantity;
-    }, 0);
-
-    const tax = subtotal * 0.1;
-    const total = subtotal + tax;
-
     createOrder({
       tableId: selectedTable,
       items: cart.map(item => ({
         productId: item.productId,
         quantity: item.quantity,
-        price: products.find(p => p.id === item.productId)?.price || 0,
       })),
-      subtotal,
-      tax,
-      total,
-      status: 'pending',
     });
 
     setCart([]);

@@ -20,6 +20,7 @@ import {
   serviceRequestService,
   transactionService,
 } from '../services';
+import { useAuth } from './AuthContext';
 
 interface RestaurantContextType {
   orders: Order[];
@@ -32,9 +33,11 @@ interface RestaurantContextType {
   error: string | null;
   updateOrderStatus: (orderId: string, status: OrderStatus) => Promise<void>;
   updateTableStatus: (tableId: string, status: TableStatus) => Promise<void>;
-  createOrder: (
-    order: Omit<Order, 'id' | 'orderNumber' | 'createdAt' | 'updatedAt' | 'restaurantId'>
-  ) => Promise<Order>;
+  createOrder: (order: {
+    tableId: string;
+    customerId?: string;
+    items: { productId: string; quantity: number }[];
+  }) => Promise<Order | undefined>;
   addOrderItem: (orderId: string, productId: string, quantity: number) => Promise<void>;
   updateProductAvailability: (productId: string, available: boolean) => Promise<void>;
   createProduct: (product: Omit<Product, 'id'>) => Promise<Product>;
@@ -67,9 +70,13 @@ export const useRestaurant = () => {
   return context;
 };
 
-const DEFAULT_RESTAURANT_ID = 'rest-1';
-
 export const RestaurantProvider = ({ children }: { children: ReactNode }) => {
+  const { currentUser, isLoading: isAuthLoading } = useAuth();
+  // CEO va super-admin barcha restoranlarni ko'radi (restaurantId cheklovisiz),
+  // boshqa rollar (kassir, ofitsiant, oshpaz, admin) faqat o'z restoraniga tegishli ma'lumotni ko'radi.
+  const restaurantId =
+    currentUser && !['ceo', 'super-admin'].includes(currentUser.role) ? currentUser.restaurantId : undefined;
+
   const [orders, setOrders] = useState<Order[]>([]);
   const [tables, setTables] = useState<Table[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -80,37 +87,62 @@ export const RestaurantProvider = ({ children }: { children: ReactNode }) => {
   const [error, setError] = useState<string | null>(null);
 
   const loadAll = useCallback(async () => {
+    // Auth holati hali tasdiqlanmagan bo'lsa (masalan sahifa yangilangan payt, kesh
+    // orqali vaqtincha ko'rsatilgan foydalanuvchi bilan) — bu yerda so'rov yubormaymiz.
+    // Aks holda eski/nomukammal restaurantId bilan backendga so'rov ketib,
+    // "restaurantId is required" kabi keraksiz xato chiqishi mumkin.
+    if (isAuthLoading) return;
+    if (!currentUser) {
+      setIsLoading(false);
+      return;
+    }
     setIsLoading(true);
     setError(null);
-    try {
-      const [ordersData, tablesData, productsData, categoriesData, requestsData, transactionsData] =
-        await Promise.all([
-          orderService.list(),
-          tableService.list(),
-          productService.list(),
-          categoryService.list(),
-          serviceRequestService.list(),
-          transactionService.list(),
-        ]);
-      setOrders(ordersData);
-      setTables(tablesData);
-      setProducts(productsData);
-      setCategories(categoriesData);
-      setServiceRequests(requestsData);
-      setTransactions(transactionsData);
-    } catch {
-      setError('common.loadError');
-    } finally {
-      setIsLoading(false);
+
+    // Promise.all o'rniga Promise.allSettled ishlatamiz: agar bitta endpoint
+    // (masalan service-requests) foydalanuvchi roli uchun 403/ruxsatsiz bo'lsa,
+    // bu qolgan barcha ma'lumotlarni (orders, tables, products...) ham
+    // butunlay bloklab qo'ymasligi kerak. Promise.all bilan birinchi xato
+    // hammasini rad etib, sahifa "bo'sh/muzlagan" ko'rinishda qolar edi.
+    const results = await Promise.allSettled([
+      orderService.list(restaurantId),
+      tableService.list(),
+      productService.list(),
+      categoryService.list(),
+      serviceRequestService.list(),
+      transactionService.list(restaurantId),
+    ]);
+
+    const [ordersRes, tablesRes, productsRes, categoriesRes, requestsRes, transactionsRes] = results;
+
+    if (ordersRes.status === 'fulfilled') setOrders(ordersRes.value);
+    if (tablesRes.status === 'fulfilled') setTables(tablesRes.value);
+    if (productsRes.status === 'fulfilled') setProducts(productsRes.value);
+    if (categoriesRes.status === 'fulfilled') setCategories(categoriesRes.value);
+    if (requestsRes.status === 'fulfilled') setServiceRequests(requestsRes.value);
+    if (transactionsRes.status === 'fulfilled') setTransactions(transactionsRes.value);
+
+    const failed = results.filter((r) => r.status === 'rejected');
+    if (failed.length > 0) {
+      failed.forEach((r) => {
+        if (r.status === 'rejected') console.error('Ma\'lumot yuklashda xatolik:', r.reason);
+      });
+      // Faqat HAMMASI muvaffaqiyatsiz bo'lsa, umumiy xato ko'rsatamiz.
+      // Qisman xato (masalan faqat service-requests) sahifani butunlay bloklamasligi kerak.
+      if (failed.length === results.length) {
+        setError('common.loadError');
+      }
     }
-  }, []);
+
+    setIsLoading(false);
+  }, [currentUser, restaurantId, isAuthLoading]);
 
   useEffect(() => {
     loadAll();
   }, [loadAll]);
 
   const updateOrderStatus = useCallback(async (orderId: string, status: OrderStatus) => {
-    const updated = await orderService.update(orderId, { status, updatedAt: new Date() });
+    const updated = await orderService.updateStatus(orderId, status);
     if (updated) {
       setOrders((prev) => prev.map((order) => (order.id === orderId ? updated : order)));
     }
@@ -124,36 +156,31 @@ export const RestaurantProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const createOrder = useCallback(
-    async (
-      orderData: Omit<Order, 'id' | 'orderNumber' | 'createdAt' | 'updatedAt' | 'restaurantId'>
-    ) => {
-      const existing = orderService.peekAll();
-      const nextNumber =
-        existing.length > 0 ? Math.max(...existing.map((o) => o.orderNumber)) + 1 : 101;
+    async (orderData: { tableId: string; customerId?: string; items: { productId: string; quantity: number }[] }) => {
+      try {
+        const created = await orderService.create({
+          tableId: orderData.tableId,
+          customerId: orderData.customerId,
+          restaurantId,
+          items: orderData.items,
+        });
+        setOrders((prev) => [...prev, created]);
 
-      const newOrder: Order = {
-        ...orderData,
-        id: `order-${Date.now()}`,
-        orderNumber: nextNumber,
-        restaurantId: DEFAULT_RESTAURANT_ID,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
+        const updatedTable = await tableService.update(created.tableId, {
+          status: 'occupied',
+          currentOrderId: created.id,
+        });
+        if (updatedTable) {
+          setTables((prev) => prev.map((t) => (t.id === updatedTable.id ? updatedTable : t)));
+        }
 
-      const created = await orderService.create(newOrder);
-      setOrders((prev) => [...prev, created]);
-
-      const updatedTable = await tableService.update(created.tableId, {
-        status: 'occupied',
-        currentOrderId: created.id,
-      });
-      if (updatedTable) {
-        setTables((prev) => prev.map((t) => (t.id === updatedTable.id ? updatedTable : t)));
+        return created;
+      } catch (err) {
+        console.error('Buyurtma yaratib bo\'lmadi:', err);
+        return undefined;
       }
-
-      return created;
     },
-    []
+    [restaurantId]
   );
 
   const addOrderItem = useCallback(
@@ -163,7 +190,7 @@ export const RestaurantProvider = ({ children }: { children: ReactNode }) => {
       if (!order || !product) return;
 
       const existingItemIndex = order.items.findIndex((item) => item.productId === productId);
-      let newItems = [...order.items];
+      const newItems = [...order.items];
 
       if (existingItemIndex >= 0) {
         newItems[existingItemIndex] = {
@@ -242,23 +269,23 @@ export const RestaurantProvider = ({ children }: { children: ReactNode }) => {
   const payOrder = useCallback(
     async (orderId: string, paymentMethod: PaymentMethod) => {
       const order = orders.find((o) => o.id === orderId);
-      const updatedOrder = await orderService.update(orderId, {
-        status: 'completed',
-        paymentMethod,
-        paidAt: new Date(),
-        updatedAt: new Date(),
-      });
-      if (updatedOrder) {
-        setOrders((prev) => prev.map((o) => (o.id === orderId ? updatedOrder : o)));
-      }
-      if (order) {
-        const updatedTable = await tableService.update(order.tableId, {
-          status: 'cleaning',
-          currentOrderId: undefined,
-        });
-        if (updatedTable) {
-          setTables((prev) => prev.map((t) => (t.id === updatedTable.id ? updatedTable : t)));
+      try {
+        const updatedOrder = await orderService.pay(orderId, paymentMethod);
+        if (updatedOrder) {
+          setOrders((prev) => prev.map((o) => (o.id === orderId ? updatedOrder : o)));
         }
+        if (order) {
+          const updatedTable = await tableService.update(order.tableId, {
+            status: 'cleaning',
+            currentOrderId: undefined,
+          });
+          if (updatedTable) {
+            setTables((prev) => prev.map((t) => (t.id === updatedTable.id ? updatedTable : t)));
+          }
+        }
+      } catch (err) {
+        console.error('To\'lovni amalga oshirib bo\'lmadi:', err);
+        setError('common.actionError');
       }
     },
     [orders]
@@ -272,20 +299,20 @@ export const RestaurantProvider = ({ children }: { children: ReactNode }) => {
       amount: number;
       createdBy: string;
     }) => {
-      const newTransaction: Transaction = {
-        id: `txn-${Date.now()}`,
-        restaurantId: DEFAULT_RESTAURANT_ID,
-        type: data.type,
-        category: data.category,
-        description: data.description,
-        amount: data.amount,
-        createdAt: new Date(),
-        createdBy: data.createdBy,
-      };
-      const created = await transactionService.create(newTransaction);
-      setTransactions((prev) => [...prev, created]);
+      if (!restaurantId && currentUser?.role !== 'ceo') {
+        console.error('Tranzaksiya yaratish uchun restaurantId aniqlanmadi (currentUser.restaurantId bo\'sh)');
+        setError('common.actionError');
+        return;
+      }
+      try {
+        const created = await transactionService.create(restaurantId!, data);
+        setTransactions((prev) => [...prev, created]);
+      } catch (err) {
+        console.error('Tranzaksiya yaratib bo\'lmadi:', err);
+        setError('common.actionError');
+      }
     },
-    []
+    [restaurantId, currentUser]
   );
 
   const removeTransaction = useCallback(async (transactionId: string) => {

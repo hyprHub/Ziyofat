@@ -45,7 +45,16 @@
     "demoAccounts": "Demo Accounts (for testing)",
     "demoPasswordHint": "Password for all demo accounts: demo123",
     "invalidCredentials": "Invalid email or password",
-    "fillAllFields": "Please fill in all fields"
+    "fillAllFields": "Please fill in all fields",
+    "registerFailed": "Registration failed",
+    "noAccount": "Don't have an account yet?",
+    "haveAccount": "Already have an account?",
+    "registerTitle": "Register as super-admin",
+    "fullName": "Full name",
+    "regKey": "Registration key (x-reg-key)",
+    "regKeyHint": "Ask your backend administrator for this key",
+    "register": "Register",
+    "backToLogin": "Back to login"
   },
   "dashboard": {
     "greeting": "Good morning,",
@@ -164,7 +173,9 @@
     "close": "Close",
     "back": "Back",
     "next": "Next",
-    "language": "Language"
+    "language": "Language",
+    "loadError": "Failed to load data",
+    "actionError": "Failed to perform the action"
   },
   "cashier": {
     "title": "Cashier",
@@ -262,6 +273,47 @@
     "noRestaurants": "No restaurants yet",
     "noUsers": "No users yet",
     "confirmDeleteRestaurant": "Delete this restaurant?",
-    "confirmDeleteUser": "Delete this user?"
+    "confirmDeleteUser": "Delete this user?",
+    "plan": "Plan",
+    "price": "Price",
+    "startDate": "Start date",
+    "renewalDate": "Renewal date",
+    "statusTrial": "Trial",
+    "statusExpired": "Expired",
+    "statusCancelled": "Cancelled",
+    "planBasic": "Basic",
+    "planStandard": "Standard",
+    "planPremium": "Premium",
+    "noSubscriptions": "No subscriptions yet",
+    "amount": "Amount",
+    "date": "Date",
+    "paymentPending": "Pending",
+    "paymentPaid": "Paid",
+    "paymentFailed": "Failed",
+    "paymentRefunded": "Refunded",
+    "noPayments": "No payments yet",
+    "actor": "User",
+    "action": "Action",
+    "entity": "Entity",
+    "time": "Time",
+    "noLogs": "System log is empty",
+    "platformName": "Platform name",
+    "defaultCurrency": "Default currency",
+    "supportEmail": "Support email",
+    "saveSettings": "Save",
+    "settingsSaved": "Settings saved",
+    "settingsLoadError": "Could not load settings",
+    "totalPaid": "Total paid",
+    "pendingCount": "Pending",
+    "monthlyRevenue": "Monthly revenue",
+    "activeCount": "Active subscriptions",
+    "trialCount": "On trial",
+    "expiringSoon": "Expiring soon"
+  },
+  "notFound": {
+    "title": "Page not found",
+    "description": "The page you're looking for doesn't exist or has been moved.",
+    "back": "Go back",
+    "home": "Home"
   }
 }

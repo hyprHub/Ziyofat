@@ -111,21 +111,13 @@ export default function CustomerMenu() {
   const handlePlaceOrder = async () => {
     if (!activeTable || cart.length === 0) return;
     setIsPlacingOrder(true);
-    const subtotal = cartTotal;
-    const tax = subtotal * 0.1;
-    const total = subtotal + tax;
 
     await createOrder({
       tableId: activeTable.id,
       items: cart.map(item => ({
         productId: item.productId,
         quantity: item.quantity,
-        price: products.find(p => p.id === item.productId)?.price || 0,
       })),
-      subtotal,
-      tax,
-      total,
-      status: 'pending',
     });
 
     setIsPlacingOrder(false);

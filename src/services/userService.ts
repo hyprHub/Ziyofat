@@ -1,21 +1,61 @@
 import type { User } from '../types';
-import { collection, delay } from '../lib/db';
-import { seedUsers } from '../data/seed/users.seed';
+import { api } from '../lib/apiClient';
+import { normalizeId } from '../lib/normalize';
 
-const table = collection<User>('users', seedUsers);
+function mapUser(raw: Record<string, unknown>): User {
+  const n = normalizeId(raw);
+  return {
+    id: n.id,
+    name: (n.name as string) ?? '',
+    email: (n.email as string) ?? '',
+    password: '',
+    role: n.role as User['role'],
+    restaurantId: (n.restaurantId as string) ?? undefined,
+  };
+}
 
 export const userService = {
-  list: () => table.getAll(),
-  getById: (id: string) => table.getById(id),
-  create: (data: Omit<User, 'id'>) => table.create({ ...data, id: `user-${Date.now()}` }),
-  update: (id: string, patch: Partial<User>) => table.update(id, patch),
-  remove: (id: string) => table.remove(id),
+  // Faqat super-admin uchun ruxsat etilgan (backend tomonidan cheklangan)
+  async list(): Promise<User[]> {
+    const raw = await api.get<Record<string, unknown>[]>('/users');
+    return (raw ?? []).map(mapUser);
+  },
 
-  async authenticate(email: string, password: string): Promise<User | null> {
-    const all = await table.getAll();
-    const found = all.find(
-      (u) => u.email.toLowerCase() === email.trim().toLowerCase() && u.password === password
-    );
-    return delay(found ?? null);
+  async getById(id: string): Promise<User | undefined> {
+    const all = await userService.list();
+    return all.find((u) => u.id === id);
+  },
+
+  async create(data: Omit<User, 'id'>): Promise<User> {
+    const raw = await api.post<Record<string, unknown>>('/users', {
+      name: data.name,
+      email: data.email,
+      password: data.password,
+      role: data.role,
+      restaurantId: data.restaurantId,
+    });
+    return mapUser(raw);
+  },
+
+  // ⚠️ Swagger'da /users uchun PATCH/DELETE hujjatlashtirilmagan. Backend qo'llab-quvvatlamasa,
+  // bu chaqiruvlar xatolik qaytaradi — chaqiruvchi joyda try/catch bilan ushlanadi.
+  async update(id: string, patch: Partial<User>): Promise<User | undefined> {
+    try {
+      const raw = await api.patch<Record<string, unknown>>(`/users/${id}`, patch);
+      return mapUser(raw);
+    } catch (err) {
+      console.error('Foydalanuvchini yangilab bo\'lmadi (backend PATCH /users/:id ni qo\'llamasligi mumkin):', err);
+      return undefined;
+    }
+  },
+
+  async remove(id: string): Promise<boolean> {
+    try {
+      await api.delete(`/users/${id}`);
+      return true;
+    } catch (err) {
+      console.error('Foydalanuvchini o\'chirib bo\'lmadi (backend DELETE /users/:id ni qo\'llamasligi mumkin):', err);
+      return false;
+    }
   },
 };

@@ -1,7 +1,8 @@
 import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import type { User, UserRole } from '../types';
-import { userService } from '../services/userService';
+import { authService } from '../services/authService';
+import { getToken, clearToken } from '../lib/apiClient';
 
 interface AuthContextType {
   currentUser: User | null;
@@ -9,6 +10,7 @@ interface AuthContextType {
   isLoading: boolean;
   error: string | null;
   login: (email: string, password: string) => Promise<boolean>;
+  register: (data: { name: string; email: string; password: string; regKey: string }) => Promise<boolean>;
   logout: () => void;
 }
 
@@ -40,38 +42,66 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Sahifa yangilanganda saqlangan sessiyani tiklash
+  // Sahifa yangilanganda saqlangan sessiyani (JWT token) tekshirib, tiklaymiz
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        setCurrentUser(JSON.parse(raw));
+    (async () => {
+      const token = getToken();
+      if (!token) {
+        setIsLoading(false);
+        return;
       }
-    } catch {
-      localStorage.removeItem(STORAGE_KEY);
-    } finally {
+      // Avval localStorage'dagi keshlangan userni ko'rsatamiz (tezroq UI), keyin serverdan tasdiqlaymiz
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) setCurrentUser(JSON.parse(raw));
+      } catch {
+        localStorage.removeItem(STORAGE_KEY);
+      }
+
+      const freshUser = await authService.me();
+      if (freshUser) {
+        setCurrentUser(freshUser);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(freshUser));
+      } else {
+        // Token yaroqsiz — sessiyani tozalaymiz
+        clearToken();
+        localStorage.removeItem(STORAGE_KEY);
+        setCurrentUser(null);
+      }
       setIsLoading(false);
-    }
+    })();
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
     setError(null);
+    const result = await authService.login(email, password);
 
-    // Servis qatlami orqali autentifikatsiya (hozircha localStorage "backend",
-    // kelajakda userService ichini fetch('/api/auth/login')ga almashtirish kifoya).
-    const found = await userService.authenticate(email, password);
-
-    if (!found) {
+    if (!result) {
       setError('auth.invalidCredentials');
       return false;
     }
 
-    setCurrentUser(found);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(found));
+    setCurrentUser(result.user);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(result.user));
     return true;
   }, []);
 
+  const register = useCallback(
+    async (data: { name: string; email: string; password: string; regKey: string }) => {
+      setError(null);
+      const result = await authService.register(data);
+      if (!result.ok) {
+        setError(result.message ?? 'auth.registerFailed');
+        return false;
+      }
+      // Ro'yxatdan o'tgandan so'ng avtomatik login qilamiz
+      return login(data.email, data.password);
+    },
+    [login]
+  );
+
   const logout = useCallback(() => {
+    authService.logout();
     setCurrentUser(null);
     localStorage.removeItem(STORAGE_KEY);
   }, []);
@@ -82,6 +112,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     isLoading,
     error,
     login,
+    register,
     logout,
   };
 

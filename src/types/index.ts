@@ -104,3 +104,63 @@ export interface Transaction {
   createdAt: Date;
   createdBy: string; // user id (odatda kassir)
 }
+
+// ==================== Platform: Subscriptions / Payments / System Logs / Settings ====================
+// Bu 4 tasi platforma (super-admin) darajasidagi — restoran to'lash uchun ishlatadigan obuna va billing.
+// Kassadagi order to'lovlari (Transaction) bilan aralashtirmang.
+
+export type SubscriptionPlan = 'basic' | 'standard' | 'premium';
+export type SubscriptionStatus = 'active' | 'trial' | 'expired' | 'cancelled';
+
+export interface Subscription {
+  id: string;
+  restaurantId: string;
+  plan: SubscriptionPlan;
+  status: SubscriptionStatus;
+  price: number;
+  startDate: Date;
+  renewalDate: Date;
+}
+
+export interface SubscriptionStats {
+  activeCount: number;
+  trialCount: number;
+  byPlan: Record<string, number>;
+  expiringSoon: number;
+}
+
+export type PlatformPaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded';
+
+export interface PlatformPayment {
+  id: string;
+  restaurantId: string;
+  amount: number;
+  status: PlatformPaymentStatus;
+  createdAt: Date;
+}
+
+export interface PlatformPaymentStats {
+  totalPaid: number;
+  pendingCount: number;
+  monthlyRevenue: number;
+}
+
+export interface SystemLog {
+  id: string;
+  userId?: string;
+  action: string;
+  entity?: string;
+  createdAt: Date;
+  [key: string]: unknown;
+}
+
+export interface SystemLogsPage {
+  logs: SystemLog[];
+  total?: number;
+  page?: number;
+  limit?: number;
+}
+
+export interface PlatformSettings {
+  [key: string]: unknown;
+}

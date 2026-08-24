@@ -4,6 +4,7 @@ import { PlatformProvider } from './contexts/PlatformContext';
 import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import LoginPage from './pages/login/LoginPage';
+import QuickSetupPage from './pages/setup/QuickSetupPage';
 import CustomerMenu from './pages/customer/CustomerMenu';
 import KitchenDisplay from './pages/kitchen/KitchenDisplay';
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -11,6 +12,7 @@ import WaiterInterface from './pages/waiter/WaiterInterface';
 import SuperAdminDashboard from './pages/super-admin/SuperAdminDashboard';
 import CashierPOS from './pages/cashier/CashierPOS';
 import CEODashboard from './pages/ceo/CEODashboard';
+import NotFoundPage from './pages/not-found/NotFoundPage';
 
 function App() {
   return (
@@ -21,6 +23,7 @@ function App() {
           <Routes>
             <Route path="/" element={<Navigate to="/login" replace />} />
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/setup" element={<QuickSetupPage />} />
 
             {/* Mijoz uchun menyu login talab qilmaydi (QR orqali ochiladi) */}
             <Route path="/menu/:restaurantSlug/:tableToken" element={<CustomerMenu />} />
@@ -74,7 +77,7 @@ function App() {
               }
             />
 
-            <Route path="*" element={<Navigate to="/login" replace />} />
+            <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </RestaurantProvider>
         </PlatformProvider>

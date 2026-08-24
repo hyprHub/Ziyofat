@@ -1,15 +1,39 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePlatform } from '../../contexts/PlatformContext';
 import { useRestaurant } from '../../contexts/RestaurantContext';
 import { formatCurrency } from '../../utils/helpers';
-import { Building2, Users, TrendingUp, DollarSign, Plus, Trash2, X } from 'lucide-react';
+import { Building2, Users, TrendingUp, DollarSign, Plus, Trash2, X, Bell, CreditCard, BarChart3, FileText } from 'lucide-react';
 import LanguageSwitcher from '../../components/common/LanguageSwitcher';
 import UserMenu from '../../components/common/UserMenu';
 import PageLoader from '../../components/common/PageLoader';
-import type { Restaurant, User, UserRole } from '../../types';
+import { analyticsService, pickNumber, type RestaurantComparisonEntry } from '../../services/analyticsService';
+import { subscriptionService } from '../../services/subscriptionService';
+import { platformPaymentService } from '../../services/platformPaymentService';
+import { systemLogService } from '../../services/systemLogService';
+import { settingsService } from '../../services/settingsService';
+import type {
+  Restaurant,
+  User,
+  UserRole,
+  Subscription,
+  SubscriptionStats,
+  PlatformPayment,
+  PlatformPaymentStats,
+  SystemLog,
+  PlatformSettings,
+} from '../../types';
 
 type ModalMode = null | 'restaurant' | 'user';
+type SuperAdminTab =
+  | 'overview'
+  | 'restaurants'
+  | 'users'
+  | 'subscriptions'
+  | 'payments'
+  | 'analytics'
+  | 'systemLogs'
+  | 'settings';
 
 const emptyRestaurant = { name: '', slug: '', address: '', phone: '', email: '', active: true };
 const emptyUser = { name: '', email: '', password: '', role: 'admin' as UserRole, restaurantId: '' };
@@ -31,6 +55,162 @@ export default function SuperAdminDashboard() {
   const [restaurantForm, setRestaurantForm] = useState(emptyRestaurant);
   const [userForm, setUserForm] = useState(emptyUser);
   const [isSaving, setIsSaving] = useState(false);
+
+  const [activeTab, setActiveTab] = useState<SuperAdminTab>('overview');
+  const [comparison, setComparison] = useState<RestaurantComparisonEntry[]>([]);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+
+  useEffect(() => {
+    if (activeTab !== 'analytics') return;
+    let cancelled = false;
+    setAnalyticsLoading(true);
+    analyticsService
+      .restaurantsComparison()
+      .then((data) => {
+        if (!cancelled) setComparison(data);
+      })
+      .finally(() => {
+        if (!cancelled) setAnalyticsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab]);
+
+  // ------- Subscriptions -------
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+  const [subStats, setSubStats] = useState<SubscriptionStats | null>(null);
+  const [subsLoading, setSubsLoading] = useState(false);
+
+  useEffect(() => {
+    if (activeTab !== 'subscriptions') return;
+    let cancelled = false;
+    setSubsLoading(true);
+    Promise.all([subscriptionService.list(), subscriptionService.stats()])
+      .then(([list, stats]) => {
+        if (!cancelled) {
+          setSubscriptions(list);
+          setSubStats(stats);
+        }
+      })
+      .catch((err) => console.error('Obunalarni yuklab bo\'lmadi:', err))
+      .finally(() => {
+        if (!cancelled) setSubsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab]);
+
+  // ------- Platform Payments -------
+  const [platformPayments, setPlatformPayments] = useState<PlatformPayment[]>([]);
+  const [paymentStats, setPaymentStats] = useState<PlatformPaymentStats | null>(null);
+  const [paymentsLoading, setPaymentsLoading] = useState(false);
+
+  useEffect(() => {
+    if (activeTab !== 'payments') return;
+    let cancelled = false;
+    setPaymentsLoading(true);
+    Promise.all([platformPaymentService.list(), platformPaymentService.stats()])
+      .then(([list, stats]) => {
+        if (!cancelled) {
+          setPlatformPayments(list);
+          setPaymentStats(stats);
+        }
+      })
+      .catch((err) => console.error('To\'lovlarni yuklab bo\'lmadi:', err))
+      .finally(() => {
+        if (!cancelled) setPaymentsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab]);
+
+  // ------- System Logs -------
+  const [systemLogs, setSystemLogs] = useState<SystemLog[]>([]);
+  const [logsLoading, setLogsLoading] = useState(false);
+
+  useEffect(() => {
+    if (activeTab !== 'systemLogs') return;
+    let cancelled = false;
+    setLogsLoading(true);
+    systemLogService
+      .list({ limit: 50 })
+      .then((page) => {
+        if (!cancelled) setSystemLogs(page.logs);
+      })
+      .catch((err) => console.error('Tizim jurnalini yuklab bo\'lmadi:', err))
+      .finally(() => {
+        if (!cancelled) setLogsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab]);
+
+  // ------- Platform Settings -------
+  const [settingsForm, setSettingsForm] = useState<PlatformSettings>({});
+  const [settingsLoading, setSettingsLoading] = useState(false);
+  const [settingsSaving, setSettingsSaving] = useState(false);
+  const [settingsError, setSettingsError] = useState(false);
+  const [settingsSaved, setSettingsSaved] = useState(false);
+
+  useEffect(() => {
+    if (activeTab !== 'settings') return;
+    let cancelled = false;
+    setSettingsLoading(true);
+    setSettingsError(false);
+    settingsService
+      .get()
+      .then((data) => {
+        if (!cancelled) setSettingsForm(data);
+      })
+      .catch((err) => {
+        console.error('Sozlamalarni yuklab bo\'lmadi:', err);
+        if (!cancelled) setSettingsError(true);
+      })
+      .finally(() => {
+        if (!cancelled) setSettingsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab]);
+
+  const handleSaveSettings = async () => {
+    setSettingsSaving(true);
+    setSettingsSaved(false);
+    try {
+      const updated = await settingsService.update(settingsForm);
+      setSettingsForm(updated);
+      setSettingsSaved(true);
+    } catch (err) {
+      console.error('Sozlamalarni saqlab bo\'lmadi:', err);
+    } finally {
+      setSettingsSaving(false);
+    }
+  };
+
+  const restaurantName = (id: string) => restaurants.find((r) => r.id === id)?.name ?? '—';
+
+  const dateFmt = (d: Date) =>
+    new Intl.DateTimeFormat('uz-UZ', { day: '2-digit', month: 'short', year: 'numeric' }).format(d);
+  const dateTimeFmt = (d: Date) =>
+    new Intl.DateTimeFormat('uz-UZ', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }).format(d);
+
+  const subStatusStyle: Record<string, string> = {
+    active: 'bg-success/10 text-success',
+    trial: 'bg-muted-gold/10 text-muted-gold',
+    expired: 'bg-danger/10 text-danger',
+    cancelled: 'bg-taupe/10 text-taupe',
+  };
+  const paymentStatusStyle: Record<string, string> = {
+    paid: 'bg-success/10 text-success',
+    pending: 'bg-muted-gold/10 text-muted-gold',
+    failed: 'bg-danger/10 text-danger',
+    refunded: 'bg-taupe/10 text-taupe',
+  };
 
   if (isLoading) return <PageLoader />;
 
@@ -92,20 +272,23 @@ export default function SuperAdminDashboard() {
         </div>
 
         <nav className="p-4 space-y-2">
-          {[
-            { label: t('navigation.overview'), icon: '📊' },
-            { label: t('navigation.restaurants'), icon: '🏪' },
-            { label: t('navigation.users'), icon: '👥' },
-            { label: t('navigation.subscriptions'), icon: '🔔' },
-            { label: t('navigation.payments'), icon: '💳' },
-            { label: t('navigation.analytics'), icon: '📈' },
-            { label: t('navigation.systemLogs'), icon: '📝' },
-            { label: t('navigation.settings'), icon: '⚙️' },
-          ].map((item, idx) => (
+          {(
+            [
+              { id: 'overview', label: t('navigation.overview'), icon: '📊' },
+              { id: 'restaurants', label: t('navigation.restaurants'), icon: '🏪' },
+              { id: 'users', label: t('navigation.users'), icon: '👥' },
+              { id: 'subscriptions', label: t('navigation.subscriptions'), icon: '🔔' },
+              { id: 'payments', label: t('navigation.payments'), icon: '💳' },
+              { id: 'analytics', label: t('navigation.analytics'), icon: '📈' },
+              { id: 'systemLogs', label: t('navigation.systemLogs'), icon: '📝' },
+              { id: 'settings', label: t('navigation.settings'), icon: '⚙️' },
+            ] as { id: SuperAdminTab; label: string; icon: string }[]
+          ).map((item) => (
             <button
-              key={idx}
+              key={item.id}
+              onClick={() => setActiveTab(item.id)}
               className={`w-full text-left px-4 py-3 rounded-button transition-colors ${
-                idx === 0 ? 'bg-espresso text-white' : 'text-espresso hover:bg-soft-sand'
+                activeTab === item.id ? 'bg-espresso text-white' : 'text-espresso hover:bg-soft-sand'
               }`}
             >
               <span className="mr-3">{item.icon}</span>
@@ -133,6 +316,8 @@ export default function SuperAdminDashboard() {
 
         {/* Content */}
         <div className="p-8">
+        {activeTab === 'overview' && (
+        <>
           {/* KPI Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <div className="bg-white rounded-card p-6 shadow-sm border border-latte hover:border-espresso transition-all duration-300">
@@ -172,8 +357,11 @@ export default function SuperAdminDashboard() {
             </div>
           </div>
 
-          {/* Restaurants Table */}
-          <div className="bg-white rounded-card shadow-sm border border-latte overflow-hidden mb-8">
+        </>
+        )}
+
+        {(activeTab === 'overview' || activeTab === 'restaurants') && (
+          <div className={`bg-white rounded-card shadow-sm border border-latte overflow-hidden ${activeTab === 'overview' ? 'mb-8' : ''}`}>
             <div className="p-6 border-b border-latte flex items-center justify-between">
               <h3 className="text-xl font-bold text-espresso">{t('navigation.restaurants')}</h3>
               <button
@@ -236,8 +424,9 @@ export default function SuperAdminDashboard() {
               </table>
             </div>
           </div>
+        )}
 
-          {/* Users Table */}
+        {(activeTab === 'overview' || activeTab === 'users') && (
           <div className="bg-white rounded-card shadow-sm border border-latte overflow-hidden">
             <div className="p-6 border-b border-latte flex items-center justify-between">
               <h3 className="text-xl font-bold text-espresso">{t('navigation.users')}</h3>
@@ -296,6 +485,297 @@ export default function SuperAdminDashboard() {
               </table>
             </div>
           </div>
+        )}
+
+        {activeTab === 'analytics' && (
+          <div className="bg-white rounded-card shadow-sm border border-latte overflow-hidden">
+            <div className="p-6 border-b border-latte flex items-center gap-2">
+              <BarChart3 className="w-5 h-5 text-espresso" />
+              <h3 className="text-xl font-bold text-espresso">{t('navigation.analytics')}</h3>
+            </div>
+            {analyticsLoading ? (
+              <div className="p-8 text-center text-taupe text-sm">Yuklanmoqda...</div>
+            ) : comparison.length === 0 ? (
+              <div className="p-8 text-center text-taupe text-sm">
+                Backend hozircha restoranlar taqqoslash ma'lumotini qaytarmadi.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-soft-sand border-b border-latte">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-sm font-semibold text-taupe">Restoran</th>
+                      <th className="px-6 py-3 text-left text-sm font-semibold text-taupe">Daromad</th>
+                      <th className="px-6 py-3 text-left text-sm font-semibold text-taupe">Buyurtmalar</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {comparison.map((entry, idx) => (
+                      <tr key={idx} className="border-b border-soft-sand hover:bg-cream transition-colors">
+                        <td className="px-6 py-4 font-semibold text-espresso">
+                          {String(entry.name ?? entry.restaurantName ?? '—')}
+                        </td>
+                        <td className="px-6 py-4 text-taupe text-sm">
+                          {formatCurrency(pickNumber(entry, ['revenue', 'totalRevenue', 'income']))}
+                        </td>
+                        <td className="px-6 py-4 text-taupe text-sm">
+                          {pickNumber(entry, ['orders', 'totalOrders', 'ordersCount'])}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'subscriptions' && (
+          <div className="space-y-6">
+            {subStats && (
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div className="bg-white rounded-card p-6 shadow-sm border border-latte">
+                  <h3 className="text-taupe font-medium text-sm mb-2">{t('superAdmin.activeCount')}</h3>
+                  <div className="text-3xl font-bold text-espresso">{subStats.activeCount}</div>
+                </div>
+                <div className="bg-white rounded-card p-6 shadow-sm border border-latte">
+                  <h3 className="text-taupe font-medium text-sm mb-2">{t('superAdmin.trialCount')}</h3>
+                  <div className="text-3xl font-bold text-espresso">{subStats.trialCount}</div>
+                </div>
+                <div className="bg-white rounded-card p-6 shadow-sm border border-latte">
+                  <h3 className="text-taupe font-medium text-sm mb-2">{t('superAdmin.expiringSoon')}</h3>
+                  <div className="text-3xl font-bold text-espresso">{subStats.expiringSoon}</div>
+                </div>
+                <div className="bg-white rounded-card p-6 shadow-sm border border-latte">
+                  <h3 className="text-taupe font-medium text-sm mb-2">{t('superAdmin.plan')}</h3>
+                  <div className="text-sm text-espresso space-y-1">
+                    {Object.entries(subStats.byPlan).map(([plan, count]) => (
+                      <div key={plan} className="flex justify-between">
+                        <span className="capitalize">{plan}</span>
+                        <span className="font-semibold">{count}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="bg-white rounded-card shadow-sm border border-latte overflow-hidden">
+              <div className="p-6 border-b border-latte flex items-center gap-2">
+                <Bell className="w-5 h-5 text-espresso" />
+                <h3 className="text-xl font-bold text-espresso">{t('navigation.subscriptions')}</h3>
+              </div>
+              {subsLoading ? (
+                <div className="p-8 text-center text-taupe text-sm">{t('common.loading')}</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-soft-sand border-b border-latte">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-sm font-semibold text-taupe">{t('superAdmin.restaurant')}</th>
+                        <th className="px-6 py-3 text-left text-sm font-semibold text-taupe">{t('superAdmin.plan')}</th>
+                        <th className="px-6 py-3 text-left text-sm font-semibold text-taupe">{t('superAdmin.price')}</th>
+                        <th className="px-6 py-3 text-left text-sm font-semibold text-taupe">{t('superAdmin.startDate')}</th>
+                        <th className="px-6 py-3 text-left text-sm font-semibold text-taupe">{t('superAdmin.renewalDate')}</th>
+                        <th className="px-6 py-3 text-left text-sm font-semibold text-taupe">{t('superAdmin.status')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {subscriptions.length === 0 && (
+                        <tr>
+                          <td colSpan={6} className="px-6 py-8 text-center text-taupe text-sm">
+                            {t('superAdmin.noSubscriptions')}
+                          </td>
+                        </tr>
+                      )}
+                      {subscriptions.map((sub) => (
+                        <tr key={sub.id} className="border-b border-soft-sand hover:bg-cream transition-colors">
+                          <td className="px-6 py-4 font-semibold text-espresso">{restaurantName(sub.restaurantId)}</td>
+                          <td className="px-6 py-4 text-taupe text-sm capitalize">{t(`superAdmin.plan${sub.plan.charAt(0).toUpperCase()}${sub.plan.slice(1)}`)}</td>
+                          <td className="px-6 py-4 text-taupe text-sm">{formatCurrency(sub.price)}</td>
+                          <td className="px-6 py-4 text-taupe text-sm">{dateFmt(sub.startDate)}</td>
+                          <td className="px-6 py-4 text-taupe text-sm">{dateFmt(sub.renewalDate)}</td>
+                          <td className="px-6 py-4">
+                            <span className={`px-3 py-1 rounded-button text-xs font-semibold ${subStatusStyle[sub.status] ?? ''}`}>
+                              {sub.status === 'active' ? t('superAdmin.active') : t(`superAdmin.status${sub.status.charAt(0).toUpperCase()}${sub.status.slice(1)}`)}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'payments' && (
+          <div className="space-y-6">
+            {paymentStats && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-white rounded-card p-6 shadow-sm border border-latte">
+                  <h3 className="text-taupe font-medium text-sm mb-2">{t('superAdmin.totalPaid')}</h3>
+                  <div className="text-3xl font-bold text-espresso">{formatCurrency(paymentStats.totalPaid)}</div>
+                </div>
+                <div className="bg-white rounded-card p-6 shadow-sm border border-latte">
+                  <h3 className="text-taupe font-medium text-sm mb-2">{t('superAdmin.pendingCount')}</h3>
+                  <div className="text-3xl font-bold text-espresso">{paymentStats.pendingCount}</div>
+                </div>
+                <div className="bg-white rounded-card p-6 shadow-sm border border-latte">
+                  <h3 className="text-taupe font-medium text-sm mb-2">{t('superAdmin.monthlyRevenue')}</h3>
+                  <div className="text-3xl font-bold text-espresso">{formatCurrency(paymentStats.monthlyRevenue)}</div>
+                </div>
+              </div>
+            )}
+
+            <div className="bg-white rounded-card shadow-sm border border-latte overflow-hidden">
+              <div className="p-6 border-b border-latte flex items-center gap-2">
+                <CreditCard className="w-5 h-5 text-espresso" />
+                <h3 className="text-xl font-bold text-espresso">{t('navigation.payments')}</h3>
+              </div>
+              {paymentsLoading ? (
+                <div className="p-8 text-center text-taupe text-sm">{t('common.loading')}</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-soft-sand border-b border-latte">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-sm font-semibold text-taupe">{t('superAdmin.restaurant')}</th>
+                        <th className="px-6 py-3 text-left text-sm font-semibold text-taupe">{t('superAdmin.amount')}</th>
+                        <th className="px-6 py-3 text-left text-sm font-semibold text-taupe">{t('superAdmin.date')}</th>
+                        <th className="px-6 py-3 text-left text-sm font-semibold text-taupe">{t('superAdmin.status')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {platformPayments.length === 0 && (
+                        <tr>
+                          <td colSpan={4} className="px-6 py-8 text-center text-taupe text-sm">
+                            {t('superAdmin.noPayments')}
+                          </td>
+                        </tr>
+                      )}
+                      {platformPayments.map((pay) => (
+                        <tr key={pay.id} className="border-b border-soft-sand hover:bg-cream transition-colors">
+                          <td className="px-6 py-4 font-semibold text-espresso">{restaurantName(pay.restaurantId)}</td>
+                          <td className="px-6 py-4 text-taupe text-sm">{formatCurrency(pay.amount)}</td>
+                          <td className="px-6 py-4 text-taupe text-sm">{dateFmt(pay.createdAt)}</td>
+                          <td className="px-6 py-4">
+                            <span className={`px-3 py-1 rounded-button text-xs font-semibold ${paymentStatusStyle[pay.status] ?? ''}`}>
+                              {t(`superAdmin.payment${pay.status.charAt(0).toUpperCase()}${pay.status.slice(1)}`)}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'systemLogs' && (
+          <div className="bg-white rounded-card shadow-sm border border-latte overflow-hidden">
+            <div className="p-6 border-b border-latte flex items-center gap-2">
+              <FileText className="w-5 h-5 text-espresso" />
+              <h3 className="text-xl font-bold text-espresso">{t('navigation.systemLogs')}</h3>
+            </div>
+            {logsLoading ? (
+              <div className="p-8 text-center text-taupe text-sm">{t('common.loading')}</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-soft-sand border-b border-latte">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-sm font-semibold text-taupe">{t('superAdmin.actor')}</th>
+                      <th className="px-6 py-3 text-left text-sm font-semibold text-taupe">{t('superAdmin.action')}</th>
+                      <th className="px-6 py-3 text-left text-sm font-semibold text-taupe">{t('superAdmin.entity')}</th>
+                      <th className="px-6 py-3 text-left text-sm font-semibold text-taupe">{t('superAdmin.time')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {systemLogs.length === 0 && (
+                      <tr>
+                        <td colSpan={4} className="px-6 py-8 text-center text-taupe text-sm">
+                          {t('superAdmin.noLogs')}
+                        </td>
+                      </tr>
+                    )}
+                    {systemLogs.map((log) => (
+                      <tr key={log.id} className="border-b border-soft-sand hover:bg-cream transition-colors">
+                        <td className="px-6 py-4 font-semibold text-espresso">
+                          {log.userId ? users.find((u) => u.id === log.userId)?.name ?? log.userId : t('superAdmin.system')}
+                        </td>
+                        <td className="px-6 py-4 text-taupe text-sm">{log.action}</td>
+                        <td className="px-6 py-4 text-taupe text-sm">{log.entity ?? '—'}</td>
+                        <td className="px-6 py-4 text-taupe text-sm">{dateTimeFmt(log.createdAt)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'settings' && (
+          <div className="bg-white rounded-card p-8 shadow-sm border border-latte max-w-2xl">
+            {settingsLoading ? (
+              <div className="text-center text-taupe text-sm py-8">{t('common.loading')}</div>
+            ) : settingsError ? (
+              <div className="text-center text-danger text-sm py-8">{t('superAdmin.settingsLoadError')}</div>
+            ) : (
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-sm font-semibold text-espresso mb-2">
+                    {t('superAdmin.platformName')}
+                  </label>
+                  <input
+                    type="text"
+                    value={(settingsForm.platformName as string) ?? ''}
+                    onChange={(e) => setSettingsForm({ ...settingsForm, platformName: e.target.value })}
+                    className="w-full px-4 py-3 rounded-button border border-latte focus:outline-none focus:border-espresso text-espresso"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-espresso mb-2">
+                    {t('superAdmin.defaultCurrency')}
+                  </label>
+                  <input
+                    type="text"
+                    value={(settingsForm.defaultCurrency as string) ?? ''}
+                    onChange={(e) => setSettingsForm({ ...settingsForm, defaultCurrency: e.target.value })}
+                    className="w-full px-4 py-3 rounded-button border border-latte focus:outline-none focus:border-espresso text-espresso"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-espresso mb-2">
+                    {t('superAdmin.supportEmail')}
+                  </label>
+                  <input
+                    type="email"
+                    value={(settingsForm.supportEmail as string) ?? ''}
+                    onChange={(e) => setSettingsForm({ ...settingsForm, supportEmail: e.target.value })}
+                    className="w-full px-4 py-3 rounded-button border border-latte focus:outline-none focus:border-espresso text-espresso"
+                  />
+                </div>
+                <div className="flex items-center gap-4">
+                  <button
+                    onClick={handleSaveSettings}
+                    disabled={settingsSaving}
+                    className="px-6 py-3 rounded-button bg-espresso text-white font-semibold hover:bg-deep-brown transition-colors disabled:opacity-50"
+                  >
+                    {settingsSaving ? t('common.loading') : t('superAdmin.saveSettings')}
+                  </button>
+                  {settingsSaved && (
+                    <span className="text-success text-sm font-semibold">{t('superAdmin.settingsSaved')}</span>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
         </div>
       </div>
 

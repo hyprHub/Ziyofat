@@ -48,6 +48,7 @@ export default function CashierPOS() {
   const [txnCategory, setTxnCategory] = useState('');
   const [txnDescription, setTxnDescription] = useState('');
   const [txnAmount, setTxnAmount] = useState('');
+  const [isPaying, setIsPaying] = useState(false);
 
   // Unpaid orders ready to be charged: served or ready orders that are not yet completed
   const payableOrders = useMemo(
@@ -139,9 +140,11 @@ export default function CashierPOS() {
     !!selectedOrder &&
     (selectedMethod !== 'cash' || received >= (selectedOrder?.total ?? 0));
 
-  const handleConfirmPayment = () => {
+  const handleConfirmPayment = async () => {
     if (!selectedOrder) return;
-    payOrder(selectedOrder.id, selectedMethod);
+    setIsPaying(true);
+    await payOrder(selectedOrder.id, selectedMethod);
+    setIsPaying(false);
     setSuccessOrderId(selectedOrder.id);
     setSelectedOrderId(null);
     setReceivedAmount('');
@@ -438,15 +441,19 @@ export default function CashierPOS() {
                   )}
 
                   <button
-                    disabled={!canConfirm}
+                    disabled={!canConfirm || isPaying}
                     onClick={handleConfirmPayment}
                     className={`w-full py-4 rounded-button font-bold text-lg flex items-center justify-center gap-2 transition-all ${
-                      canConfirm
+                      canConfirm && !isPaying
                         ? 'bg-gradient-to-br from-terracotta to-danger text-white hover:shadow-lg'
                         : 'bg-soft-sand text-taupe cursor-not-allowed'
                     }`}
                   >
-                    <CheckCircle2 className="w-5 h-5" />
+                    {isPaying ? (
+                      <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <CheckCircle2 className="w-5 h-5" />
+                    )}
                     {t('cashier.confirmPayment')}
                   </button>
                 </div>
